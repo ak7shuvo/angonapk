@@ -1,21 +1,12 @@
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
 
-from app.api.deps import AppSettings, CurrentUser, DbSession, Storage
-from app.repositories.media_repository import MediaRepository
+from app.api.deps import AppSettings, CurrentUser, Media
 from app.schemas.media import MediaAssetRead
-from app.services.media_service import MediaError, MediaService
+from app.services.media_service import MediaError
 
 router = APIRouter(prefix="/media", tags=["media"])
-
-
-def get_media_service(db: DbSession, storage: Storage, settings: AppSettings) -> MediaService:
-    return MediaService(MediaRepository(db), storage, settings)
-
-
-Media = Annotated[MediaService, Depends(get_media_service)]
 
 
 @router.post("", response_model=MediaAssetRead, status_code=status.HTTP_201_CREATED)

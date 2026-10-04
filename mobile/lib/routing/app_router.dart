@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/post.dart';
+import '../features/social/post_detail_screen.dart';
+import '../features/social/user_list_screen.dart';
+
 import '../features/auth/auth_controller.dart';
 import '../features/auth/auth_redirect.dart';
 import '../features/auth/login_screen.dart';
@@ -43,6 +47,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.profileSetup,
         builder: (_, _) => const ProfileSetupScreen(),
+      ),
+      GoRoute(
+        path: '/posts/:id',
+        builder: (_, state) => PostDetailScreen(
+          postId: state.pathParameters['id']!,
+          initial: state.extra is Post ? state.extra as Post : null,
+        ),
+      ),
+      GoRoute(
+        path: '/u/:username/followers',
+        builder: (_, state) => UserListScreen(
+          username: state.pathParameters['username']!,
+          kind: UserListKind.followers,
+        ),
+      ),
+      GoRoute(
+        path: '/u/:username/following',
+        builder: (_, state) => UserListScreen(
+          username: state.pathParameters['username']!,
+          kind: UserListKind.following,
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => MainShell(navigationShell: shell),

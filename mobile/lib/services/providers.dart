@@ -7,6 +7,7 @@ import '../repositories/auth_repository.dart';
 import '../repositories/health_repository.dart';
 import '../repositories/media_repository.dart';
 import '../repositories/post_repository.dart';
+import '../repositories/user_repository.dart';
 import 'draft_store.dart';
 import 'image_picker_service.dart';
 import 'token_storage.dart';
@@ -58,3 +59,7 @@ final imagePickerProvider = Provider<ImagePickerService>(
 );
 
 final draftStoreProvider = Provider<DraftStore>((_) => PrefsDraftStore());
+
+final userRepositoryProvider = Provider<UserRepository>(
+  (ref) => UserRepository(ref.watch(apiClientProvider)),
+);

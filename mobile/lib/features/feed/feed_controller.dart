@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/post.dart';
 import '../../services/providers.dart';
 import '../auth/auth_controller.dart';
+import '../social/engagement_controller.dart';
+
+enum FeedScope { all, following }
 
 enum FeedStatus { loading, ready, error }
 
@@ -64,6 +67,9 @@ const _keep = Object();
 /// State for the Home feed. Server state is authoritative: the list is only
 /// ever replaced by (or appended with) what the API returned.
 class FeedController extends Notifier<FeedState> {
+  FeedController({this.scope = FeedScope.all});
+  final FeedScope scope;
+
   /// Bumped on every full (re)load so late responses from older loads are ignored.
   int _generation = 0;
 
@@ -83,8 +89,11 @@ class FeedController extends Notifier<FeedState> {
   Future<void> _loadFirstPage() async {
     final gen = ++_generation;
     try {
-      final page = await ref.read(postRepositoryProvider).fetchFeed();
+      final page = await ref
+          .read(postRepositoryProvider)
+          .fetchFeed(scope: scope.name);
       if (!ref.mounted || gen != _generation) return;
+      ref.read(engagementProvider.notifier).ingest(page.items);
       state = FeedState(
         status: FeedStatus.ready,
         posts: page.items,
@@ -106,8 +115,11 @@ class FeedController extends Notifier<FeedState> {
   Future<void> refresh() async {
     final gen = ++_generation;
     try {
-      final page = await ref.read(postRepositoryProvider).fetchFeed();
+      final page = await ref
+          .read(postRepositoryProvider)
+          .fetchFeed(scope: scope.name);
       if (!ref.mounted || gen != _generation) return;
+      ref.read(engagementProvider.notifier).ingest(page.items);
       state = FeedState(
         status: FeedStatus.ready,
         posts: page.items,
@@ -131,12 +143,6 @@ class FeedController extends Notifier<FeedState> {
     );
   }
 
-  /// Deletes on the server first; the post leaves the list only once that succeeds.
-  Future<void> deletePost(String id) async {
-    await ref.read(postRepositoryProvider).deletePost(id);
-    state = state.copyWith(posts: [...state.posts.where((p) => p.id != id)]);
-  }
-
   Future<void> loadMore() async {
     final current = state;
     if (current.status != FeedStatus.ready ||
@@ -149,8 +155,9 @@ class FeedController extends Notifier<FeedState> {
     try {
       final page = await ref
           .read(postRepositoryProvider)
-          .fetchFeed(cursor: current.nextCursor);
+          .fetchFeed(cursor: current.nextCursor, scope: scope.name);
       if (!ref.mounted || gen != _generation) return;
+      ref.read(engagementProvider.notifier).ingest(page.items);
       final known = {for (final p in state.posts) p.id};
       state = state.copyWith(
         posts: [
@@ -169,4 +176,9 @@ class FeedController extends Notifier<FeedState> {
 
 final feedControllerProvider = NotifierProvider<FeedController, FeedState>(
   FeedController.new,
+);
+
+/// Posts from people you follow (plus yours).
+final followingFeedProvider = NotifierProvider<FeedController, FeedState>(
+  () => FeedController(scope: FeedScope.following),
 );

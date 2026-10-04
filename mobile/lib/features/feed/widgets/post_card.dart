@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../models/post.dart';
+import '../../../models/social.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../../social/engagement_controller.dart';
+import '../../social/follow_button.dart';
+import '../../social/follow_controller.dart';
 import 'coming_soon.dart';
 import 'post_media_view.dart';
 
 /// A feed post. Media leads; text follows; text-only posts get an editorial
 /// pull-quote treatment so they feel like writing, not a status update.
-class PostCard extends StatelessWidget {
+class PostCard extends ConsumerWidget {
   const PostCard({
     super.key,
     required this.post,
     this.onAuthorTap,
     this.onDelete,
+    this.onOpenComments,
+    this.isMine = false,
     this.now,
   });
 
@@ -26,11 +33,15 @@ class PostCard extends StatelessWidget {
   /// Provided only for the signed-in author; shows a "Delete post" menu entry.
   final VoidCallback? onDelete;
 
+  /// Opens the post's comments; null when already on the post screen.
+  final VoidCallback? onOpenComments;
+  final bool isMine;
+
   /// Injectable clock for deterministic tests.
   final DateTime? now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,6 +57,7 @@ class PostCard extends StatelessWidget {
             post: post,
             onTap: onAuthorTap,
             onDelete: onDelete,
+            isMine: isMine,
             now: now,
           ),
         ),
@@ -81,29 +93,36 @@ class PostCard extends StatelessWidget {
               ],
             ),
           ),
-        const _ActionBar(),
+        _ActionBar(post: post, onOpenComments: onOpenComments),
         Divider(color: theme.dividerTheme.color, height: 1),
       ],
     );
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({
     required this.post,
     required this.onTap,
     required this.onDelete,
+    required this.isMine,
     required this.now,
   });
+  final bool isMine;
   final Post post;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final DateTime? now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final author = post.author;
+    final following = ref.watch(
+      followProvider.select(
+        (m) => m[author.username]?.following ?? post.followingAuthor,
+      ),
+    );
     final who = Row(
       children: [
         UserAvatar(name: author.name, seed: author.username),
@@ -143,6 +162,12 @@ class _Header extends StatelessWidget {
                       child: who,
                     ),
             ),
+            if (!isMine && !following)
+              FollowButton(
+                username: author.username,
+                initiallyFollowing: post.followingAuthor,
+                compact: true,
+              ),
             if (onDelete != null)
               PopupMenuButton<String>(
                 tooltip: 'Post options',
@@ -249,19 +274,50 @@ class _BodyState extends State<_Body> {
   }
 }
 
-/// Like / Comment / Save / Share. Visible, but their backends arrive in later
-/// phases, so tapping says so instead of faking a result.
-class _ActionBar extends StatelessWidget {
-  const _ActionBar();
+/// Like / Comment / Save are real and server-backed (optimistic, then reconciled
+/// with the server's answer). Share has no backend yet and says so.
+class _ActionBar extends ConsumerWidget {
+  const _ActionBar({required this.post, required this.onOpenComments});
+  final Post post;
+  final VoidCallback? onOpenComments;
 
   @override
-  Widget build(BuildContext context) {
-    Widget action(IconData icon, String label) => IconButton(
-      icon: Icon(icon),
-      color: AppColors.inkSoft,
-      tooltip: '$label (coming soon)',
-      onPressed: () => showComingSoon(context, label),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final engagement = ref.watch(
+      engagementProvider.select((m) => m[post.id] ?? Engagement.of(post)),
     );
+    final scheme = Theme.of(context).colorScheme;
+    final controller = ref.read(engagementProvider.notifier);
+
+    Widget counted({
+      required IconData icon,
+      required Color? color,
+      required String label,
+      required String tooltip,
+      required VoidCallback? onPressed,
+      int count = 0,
+    }) => Semantics(
+      label: label,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
+          child: Icon(icon, key: ValueKey(icon), color: color, size: 24),
+        ),
+        label: Text(
+          count > 0 ? '$count' : '',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.inkSoft,
+          minimumSize: const Size(48, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+        ),
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
@@ -269,11 +325,48 @@ class _ActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          action(Icons.favorite_border_rounded, 'Like'),
-          action(Icons.chat_bubble_outline_rounded, 'Comment'),
-          action(Icons.bookmark_border_rounded, 'Save'),
+          counted(
+            icon: engagement.liked
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            color: engagement.liked ? scheme.primary : AppColors.inkSoft,
+            label: engagement.liked ? 'Unlike' : 'Like',
+            tooltip: 'Like',
+            count: engagement.likeCount,
+            onPressed: () => guarded(
+              context,
+              () => controller.toggleLike(post),
+              fallback: 'Could not update your like.',
+            ),
+          ),
+          counted(
+            icon: Icons.chat_bubble_outline_rounded,
+            color: AppColors.inkSoft,
+            label: 'Comments',
+            tooltip: 'Comments',
+            count: engagement.commentCount,
+            onPressed: onOpenComments,
+          ),
+          counted(
+            icon: engagement.saved
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            color: engagement.saved ? scheme.primary : AppColors.inkSoft,
+            label: engagement.saved ? 'Remove from saved' : 'Save',
+            tooltip: 'Save',
+            onPressed: () => guarded(
+              context,
+              () => controller.toggleSave(post),
+              fallback: 'Could not update saved posts.',
+            ),
+          ),
           const Spacer(),
-          action(Icons.ios_share_rounded, 'Share'),
+          IconButton(
+            icon: const Icon(Icons.ios_share_rounded),
+            color: AppColors.inkSoft,
+            tooltip: 'Share (coming soon)',
+            onPressed: () => showComingSoon(context, 'Share'),
+          ),
         ],
       ),
     );

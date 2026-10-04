@@ -91,6 +91,12 @@ class PostRead(BaseModel):
     author: AuthorRead
     created_at: datetime
     updated_at: datetime
+    # Viewer-relative engagement, filled in by PostService.present().
+    like_count: int = 0
+    comment_count: int = 0
+    liked_by_me: bool = False
+    saved_by_me: bool = False
+    following_author: bool = False
 
     @field_validator("tags", mode="before")
     @classmethod

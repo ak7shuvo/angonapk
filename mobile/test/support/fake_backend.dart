@@ -108,6 +108,53 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  // Social state, keyed by post id / username.
+  final likes = <String, Set<String>>{};
+  final saves = <String, List<String>>{}; // post id -> usernames (save order)
+  final comments = <String, List<Map<String, dynamic>>>{};
+  final follows = <String, Set<String>>{}; // follower -> followees
+  int _commentSeq = 0;
+
+  /// Posts as the given viewer sees them (counts + viewer-relative flags).
+  Map<String, dynamic> decorate(Map<String, dynamic> post, String viewer) {
+    final id = post['id'] as String;
+    final author = (post['author'] as Map)['username'] as String;
+    return {
+      ...post,
+      'like_count': likes[id]?.length ?? 0,
+      'comment_count': comments[id]?.length ?? 0,
+      'liked_by_me': likes[id]?.contains(viewer) ?? false,
+      'saved_by_me': saves[id]?.contains(viewer) ?? false,
+      'following_author': follows[viewer]?.contains(author) ?? false,
+    };
+  }
+
+  Map<String, dynamic> userSummary(String username, String viewer) {
+    final u = users[username]!;
+    final profile = u['profile'] as Map;
+    return {
+      'id': u['id'],
+      'username': username,
+      'display_name': profile['display_name'],
+      'creator_type': profile['creator_type'],
+      'is_following': follows[viewer]?.contains(username) ?? false,
+      'is_me': username == viewer,
+    };
+  }
+
+  Map<String, dynamic> _page(
+    List<Map<String, dynamic>> all,
+    Map<String, String>? query,
+  ) {
+    final limit = int.parse(query?['limit'] ?? '20');
+    final start = int.parse(query?['cursor'] ?? '0');
+    final end = (start + limit).clamp(0, all.length);
+    return {
+      'items': all.sublist(start.clamp(0, all.length), end),
+      'next_cursor': end < all.length ? '$end' : null,
+    };
+  }
+
   /// Returns the token the app would send (wired by the test harness).
   String? Function()? currentToken;
 
@@ -141,24 +188,128 @@ class FakeBackend implements ApiClient {
       deletedMedia.add(path.substring('/media/'.length));
       return null;
     }
-    if (method == 'DELETE' && path.startsWith('/posts/')) {
+    if (method == 'DELETE' && RegExp(r'^/posts/[^/]+$').hasMatch(path)) {
       requireUser();
       final id = path.substring('/posts/'.length);
       feed.removeWhere((p) => p['id'] == id);
       return null;
     }
+    final social = RegExp(r'^/posts/([^/]+)/(like|save|comments)$')
+        .firstMatch(path);
+    if (social != null) {
+      final viewer = requireUser();
+      final id = social.group(1)!;
+      if (!feed.any((p) => p['id'] == id)) throw const NotFoundException();
+      switch ((method, social.group(2))) {
+        case ('PUT', 'like'):
+          (likes[id] ??= {}).add(viewer);
+          return {'liked': true, 'like_count': likes[id]!.length};
+        case ('DELETE', 'like'):
+          likes[id]?.remove(viewer);
+          return {'liked': false, 'like_count': likes[id]?.length ?? 0};
+        case ('PUT', 'save'):
+          final list = saves[id] ??= [];
+          if (!list.contains(viewer)) {
+            list.add(viewer);
+          }
+          return null;
+        case ('DELETE', 'save'):
+          saves[id]?.remove(viewer);
+          return null;
+        case ('GET', 'comments'):
+          return _page([
+            for (final c in comments[id] ?? <Map<String, dynamic>>[])
+              {...c, 'is_mine': (c['author'] as Map)['username'] == viewer},
+          ], query);
+        case ('POST', 'comments'):
+          final me = users[viewer]!;
+          final comment = {
+            'id': 'c-${_commentSeq++}',
+            'post_id': id,
+            'body': (data!['body'] as String).trim(),
+            'author': {
+              'id': me['id'],
+              'username': viewer,
+              'display_name': (me['profile'] as Map)['display_name'],
+            },
+            'created_at': '2026-01-01T00:00:00+00:00',
+            'is_mine': true,
+          };
+          (comments[id] ??= []).add(comment);
+          return comment;
+      }
+    }
+    final commentDelete = RegExp(r'^/comments/([^/]+)$').firstMatch(path);
+    if (commentDelete != null && method == 'DELETE') {
+      requireUser();
+      for (final list in comments.values) {
+        list.removeWhere((c) => c['id'] == commentDelete.group(1));
+      }
+      return null;
+    }
+    final follow = RegExp(r'^/users/([^/]+)/(follow|followers|following)$')
+        .firstMatch(path);
+    if (follow != null) {
+      final viewer = requireUser();
+      final target = follow.group(1)!;
+      if (!users.containsKey(target)) throw const NotFoundException();
+      switch ((method, follow.group(2))) {
+        case ('PUT', 'follow'):
+          if (target == viewer) {
+            throw const ValidationException('You cannot follow yourself');
+          }
+          (follows[viewer] ??= {}).add(target);
+          return {
+            'following': true,
+            'followers_count': follows.values
+                .where((f) => f.contains(target))
+                .length,
+          };
+        case ('DELETE', 'follow'):
+          follows[viewer]?.remove(target);
+          return {
+            'following': false,
+            'followers_count': follows.values
+                .where((f) => f.contains(target))
+                .length,
+          };
+        case ('GET', 'followers'):
+          return _page([
+            for (final e in follows.entries)
+              if (e.value.contains(target)) userSummary(e.key, viewer),
+          ], query);
+        case ('GET', 'following'):
+          return _page([
+            for (final f in follows[target] ?? <String>{})
+              userSummary(f, viewer),
+          ], query);
+      }
+    }
+    final single = RegExp(r'^/posts/([^/]+)$').firstMatch(path);
+    if (single != null && method == 'GET') {
+      final viewer = requireUser();
+      final found = feed.where((p) => p['id'] == single.group(1));
+      if (found.isEmpty) throw const NotFoundException();
+      return decorate(found.first, viewer);
+    }
     switch ('$method $path') {
       case 'GET /health':
         return {'status': 'ok', 'environment': 'test', 'database': 'ok'};
       case 'GET /posts':
-        requireUser();
-        final limit = int.parse(query?['limit'] ?? '20');
-        final start = int.parse(query?['cursor'] ?? '0');
-        final end = (start + limit).clamp(0, feed.length);
-        return {
-          'items': feed.sublist(start.clamp(0, feed.length), end),
-          'next_cursor': end < feed.length ? '$end' : null,
-        };
+        final viewer = requireUser();
+        var source = feed;
+        if (query?['scope'] == 'following') {
+          source = [
+            for (final p in feed)
+              if ((follows[viewer]?.contains(
+                        (p['author'] as Map)['username'],
+                      ) ??
+                      false) ||
+                  (p['author'] as Map)['username'] == viewer)
+                p,
+          ];
+        }
+        return _page([for (final p in source) decorate(p, viewer)], query);
       case 'POST /posts':
         final username = requireUser();
         final me = users[username]!;
@@ -184,7 +335,7 @@ class FakeBackend implements ApiClient {
         )..['tags'] = data['tags'];
         created.add(post);
         feed.insert(0, post);
-        return post;
+        return decorate(post, username);
       case 'POST /auth/register':
         final fields = <String, String>{};
         if (users.values.any((u) => u['email'] == data!['email'])) {

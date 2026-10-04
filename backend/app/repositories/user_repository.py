@@ -18,6 +18,10 @@ class UserRepository:
         stmt = select(User).where(or_(User.email == value, User.username == value))
         return self.db.execute(stmt).unique().scalar_one_or_none()
 
+    def get_by_username(self, username: str) -> User | None:
+        stmt = select(User).where(User.username == username.strip().lower())
+        return self.db.execute(stmt).unique().scalar_one_or_none()
+
     def exists(self, *, email: str, username: str) -> tuple[bool, bool]:
         """Returns (email_taken, username_taken)."""
         rows = self.db.execute(

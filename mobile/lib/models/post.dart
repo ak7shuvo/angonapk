@@ -72,6 +72,11 @@ class Post {
     this.locationText,
     this.media = const [],
     this.tags = const [],
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.likedByMe = false,
+    this.savedByMe = false,
+    this.followingAuthor = false,
   });
 
   final String id;
@@ -81,6 +86,14 @@ class Post {
   final List<PostMedia> media;
   final List<String> tags;
   final DateTime createdAt;
+
+  /// Server-provided engagement as of when the post was loaded. Live (optimistic)
+  /// state is layered on top by `EngagementController`.
+  final int likeCount;
+  final int commentCount;
+  final bool likedByMe;
+  final bool savedByMe;
+  final bool followingAuthor;
 
   bool get hasMedia => media.isNotEmpty;
   bool get hasText => body != null && body!.trim().isNotEmpty;
@@ -102,6 +115,11 @@ class Post {
     ],
     tags: [for (final t in (json['tags'] as List? ?? const [])) t as String],
     createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+    likeCount: json['like_count'] as int? ?? 0,
+    commentCount: json['comment_count'] as int? ?? 0,
+    likedByMe: json['liked_by_me'] as bool? ?? false,
+    savedByMe: json['saved_by_me'] as bool? ?? false,
+    followingAuthor: json['following_author'] as bool? ?? false,
   );
 }
 

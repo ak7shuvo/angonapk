@@ -330,27 +330,26 @@ void main() {
     );
 
     testWidgets(
-      'unavailable actions say "coming soon" and never fake success',
+      'share is an honest placeholder: says coming soon, sends nothing',
       (tester) async {
         seedFeed(1);
         await bootHome(tester);
-        await tester.tap(find.byIcon(Icons.favorite_border_rounded));
+        final callsBefore = backend.calls.length;
+        await tester.tap(find.byIcon(Icons.ios_share_rounded));
         await tester.pump();
-        expect(find.text('Like is coming soon.'), findsOneWidget);
-        expect(
-          find.byIcon(Icons.favorite_rounded),
-          findsNothing,
-        ); // never flips to "liked"
-        expect(backend.calls.where((c) => c.contains('like')), isEmpty);
+        expect(find.text('Share is coming soon.'), findsOneWidget);
+        expect(backend.calls.length, callsBefore);
       },
     );
   });
 
   group('PostCard', () {
-    Widget host(Post post) => MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: PostCard(post: post, now: DateTime.utc(2026, 1, 1, 3)),
+    Widget host(Post post) => ProviderScope(
+      child: MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: PostCard(post: post, now: DateTime.utc(2026, 1, 1, 3)),
+          ),
         ),
       ),
     );

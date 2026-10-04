@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../routing/routes.dart';
-import '../../models/post.dart';
 import '../../shared/widgets/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../feed/feed_controller.dart';
-import '../feed/widgets/post_card.dart';
+import '../feed/widgets/post_tile.dart';
 
-/// ANGON Home: header with profile entry point + the live feed.
+/// ANGON Home: header with profile entry point, a Discover / Following switch
+/// and the live feed.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -20,35 +19,34 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  FeedScope _scope = FeedScope.all;
+
+  NotifierProvider<FeedController, FeedState> get _provider =>
+      _scope == FeedScope.all ? feedControllerProvider : followingFeedProvider;
+
   bool _onScroll(ScrollNotification n) {
     if (n.metrics.extentAfter < 800) {
-      ref.read(feedControllerProvider.notifier).loadMore();
+      ref.read(_provider.notifier).loadMore();
     }
     return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    final feed = ref.watch(feedControllerProvider);
-    final controller = ref.read(feedControllerProvider.notifier);
+    final feed = ref.watch(_provider);
+    final controller = ref.read(_provider.notifier);
     final me = switch (ref.watch(authControllerProvider)) {
       Authenticated(:final user) => user,
       _ => null,
     };
 
-    ref.listen(feedControllerProvider.select((s) => s.refreshError), (
-      _,
-      error,
-    ) {
-      if (error == null) return;
-      final message = error is AppException
-          ? error.message
-          : 'Could not refresh your feed.';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    ref.listen(_provider.select((s) => s.refreshError), (_, error) {
+      if (error != null) {
+        showAppSnack(
+          context,
+          errorMessage(error, fallback: 'Could not refresh your feed.'),
         );
+      }
     });
 
     return Scaffold(
@@ -81,8 +79,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                 ],
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(44),
+                  child: _ScopeTabs(
+                    scope: _scope,
+                    onChanged: (s) => setState(() => _scope = s),
+                  ),
+                ),
               ),
-              ..._body(feed, controller, me?.id),
+              ..._body(feed, controller),
             ],
           ),
         ),
@@ -90,43 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Future<void> _confirmDelete(Post post) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete this post?'),
-        content: const Text(
-          'It will be removed for everyone, along with its photos.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(feedControllerProvider.notifier).deletePost(post.id);
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e is AppException ? e.message : 'Could not delete the post.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  List<Widget> _body(FeedState feed, FeedController controller, String? myId) {
+  List<Widget> _body(FeedState feed, FeedController controller) {
     switch (feed.status) {
       case FeedStatus.loading:
         return const [
@@ -143,39 +112,89 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return [
           SliverFillRemaining(
             hasScrollBody: false,
-            child: EmptyState(
-              icon: Icons.auto_awesome_outlined,
-              title: 'Nothing here yet',
-              message: 'Be the first to share a place you discovered. Posts from travellers and storytellers will gather here.',
-              actionLabel: 'Share a discovery',
-              onAction: () => context.go(AppRoutes.create),
-            ),
+            child: _scope == FeedScope.following
+                ? EmptyState(
+                    icon: Icons.people_outline,
+                    title: 'Follow storytellers',
+                    message: 'Posts from the travellers, photographers and writers you follow will appear here.',
+                    actionLabel: 'Discover',
+                    onAction: () => setState(() => _scope = FeedScope.all),
+                  )
+                : EmptyState(
+                    icon: Icons.auto_awesome_outlined,
+                    title: 'Nothing here yet',
+                    message: 'Be the first to share a place you discovered. Posts from travellers and storytellers will gather here.',
+                    actionLabel: 'Share a discovery',
+                    onAction: () => context.go(AppRoutes.create),
+                  ),
           ),
         ];
       case FeedStatus.ready:
         return [
           SliverList.builder(
             itemCount: feed.posts.length,
-            itemBuilder: (context, i) {
-              final post = feed.posts[i];
-              return PostCard(
-                key: ValueKey(post.id),
-                post: post,
-                // Only your own identity has a profile screen so far (Phase 07 adds others).
-                onAuthorTap: post.author.id == myId
-                    ? () => context.go(AppRoutes.profile)
-                    : null,
-                onDelete: post.author.id == myId
-                    ? () => _confirmDelete(post)
-                    : null,
-              );
-            },
+            itemBuilder: (context, i) =>
+                PostTile(key: ValueKey(feed.posts[i].id), post: feed.posts[i]),
           ),
           SliverToBoxAdapter(
             child: _Footer(feed: feed, onRetry: controller.loadMore),
           ),
         ];
     }
+  }
+}
+
+class _ScopeTabs extends StatelessWidget {
+  const _ScopeTabs({required this.scope, required this.onChanged});
+  final FeedScope scope;
+  final ValueChanged<FeedScope> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget tab(FeedScope value, String label) {
+      final selected = scope == value;
+      return Expanded(
+        child: Semantics(
+          selected: selected,
+          button: true,
+          child: InkWell(
+            onTap: () => onChanged(value),
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Text(
+                label,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: selected
+                      ? theme.colorScheme.onSurface
+                      : theme.textTheme.bodySmall?.color,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          tab(FeedScope.all, 'Discover'),
+          tab(FeedScope.following, 'Following'),
+        ],
+      ),
+    );
   }
 }
 

@@ -352,6 +352,7 @@ class ComposerController extends Notifier<ComposerState> {
           );
       if (_userId.isNotEmpty) await ref.read(draftStoreProvider).clear(_userId);
       ref.read(feedControllerProvider.notifier).prependPost(post);
+      ref.read(followingFeedProvider.notifier).prependPost(post);
       if (ref.mounted) state = ComposerState(restored: true);
       return post;
     } catch (e) {

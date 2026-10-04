@@ -1,12 +1,11 @@
-import base64
-import binascii
 import uuid
-from datetime import datetime
 
+from app.core.pagination import decode_cursor, encode_cursor
 from app.models import Post, User
 from app.repositories.post_repository import PostRepository
+from app.repositories.social_repository import SocialRepository
 from app.repositories.tag_repository import TagRepository
-from app.schemas.post import PostCreate
+from app.schemas.post import PostCreate, PostRead
 from app.services.media_service import MediaService
 
 DEFAULT_PAGE_SIZE = 20
@@ -21,29 +20,42 @@ class NotPostOwnerError(Exception):
     pass
 
 
-class InvalidCursorError(Exception):
-    pass
-
-
-def encode_cursor(post: Post) -> str:
-    raw = f"{post.created_at.isoformat()}|{post.id}"
-    return base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
-
-
-def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
-    try:
-        padded = cursor + "=" * (-len(cursor) % 4)
-        stamp, post_id = base64.urlsafe_b64decode(padded.encode()).decode().split("|")
-        return datetime.fromisoformat(stamp), uuid.UUID(post_id)
-    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
-        raise InvalidCursorError from exc
-
-
 class PostService:
-    def __init__(self, repo: PostRepository, tags: TagRepository, media: MediaService) -> None:
+    def __init__(
+        self,
+        repo: PostRepository,
+        tags: TagRepository,
+        media: MediaService,
+        social: SocialRepository,
+    ) -> None:
         self.repo = repo
         self.tags = tags
         self.media = media
+        self.social = social
+
+    def present(self, posts: list[Post], viewer: User | None) -> list[PostRead]:
+        """Serialise posts with counts and viewer-specific state (liked/saved)."""
+        stats = self.social.engagement([p.id for p in posts], viewer.id if viewer else None)
+        followed = (
+            self.social.following_ids(viewer.id, list({p.author_id for p in posts}))
+            if viewer
+            else set()
+        )
+        out = []
+        for post in posts:
+            e = stats[post.id]
+            out.append(
+                PostRead.model_validate(post).model_copy(
+                    update={
+                        "like_count": e.like_count,
+                        "comment_count": e.comment_count,
+                        "liked_by_me": e.liked,
+                        "saved_by_me": e.saved,
+                        "following_author": post.author_id in followed,
+                    }
+                )
+            )
+        return out
 
     def create(self, author: User, data: PostCreate) -> Post:
         assets = self.media.claim(author, [m.asset_id for m in data.media])
@@ -64,9 +76,11 @@ class PostService:
         self.repo.delete(post)
         self.media.release(assets)  # remove stored files nothing references any more
 
-    def feed(self, *, limit: int, cursor: str | None) -> tuple[list[Post], str | None]:
+    def feed(
+        self, *, limit: int, cursor: str | None, following_of: uuid.UUID | None = None
+    ) -> tuple[list[Post], str | None]:
         before = decode_cursor(cursor) if cursor else None
-        rows = self.repo.feed(limit=limit + 1, before=before)
+        rows = self.repo.feed(limit=limit + 1, before=before, following_of=following_of)
         page = rows[:limit]
-        next_cursor = encode_cursor(page[-1]) if len(rows) > limit else None
+        next_cursor = encode_cursor(page[-1].created_at, page[-1].id) if len(rows) > limit else None
         return page, next_cursor

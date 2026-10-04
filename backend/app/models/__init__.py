@@ -4,6 +4,7 @@ from app.models.media import MediaAsset
 from app.models.post import Post, PostMedia
 from app.models.profile import Profile
 from app.models.revoked_token import RevokedToken
+from app.models.social import Comment, Follow, PostLike, PostSave
 from app.models.tag import Tag, post_tags
 from app.models.user import User
 
@@ -13,8 +14,12 @@ ASSET_REFERENCES = [PostMedia.asset_id]
 
 __all__ = [
     "ASSET_REFERENCES",
+    "Comment",
+    "Follow",
     "MediaAsset",
     "Post",
+    "PostLike",
+    "PostSave",
     "PostMedia",
     "Profile",
     "RevokedToken",

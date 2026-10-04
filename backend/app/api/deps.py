@@ -64,3 +64,35 @@ def get_current_user(token: Token, auth: AuthSvc) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+# --- service factories -------------------------------------------------------------
+# (imported lazily-at-bottom to keep the import graph acyclic)
+from app.repositories.media_repository import MediaRepository  # noqa: E402
+from app.repositories.post_repository import PostRepository  # noqa: E402
+from app.repositories.social_repository import SocialRepository  # noqa: E402
+from app.repositories.tag_repository import TagRepository  # noqa: E402
+from app.services.media_service import MediaService  # noqa: E402
+from app.services.post_service import PostService  # noqa: E402
+from app.services.social_service import SocialService  # noqa: E402
+
+
+def get_media_service(db: DbSession, storage: Storage, settings: AppSettings) -> MediaService:
+    return MediaService(MediaRepository(db), storage, settings)
+
+
+Media = Annotated[MediaService, Depends(get_media_service)]
+
+
+def get_post_service(db: DbSession, media: Media) -> PostService:
+    return PostService(PostRepository(db), TagRepository(db), media, SocialRepository(db))
+
+
+Posts = Annotated[PostService, Depends(get_post_service)]
+
+
+def get_social_service(db: DbSession) -> SocialService:
+    return SocialService(SocialRepository(db), PostRepository(db), UserRepository(db))
+
+
+Social = Annotated[SocialService, Depends(get_social_service)]
