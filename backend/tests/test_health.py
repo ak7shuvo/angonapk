@@ -21,10 +21,7 @@ def test_health_degraded_when_db_down(client: TestClient) -> None:
             raise RuntimeError("db down")
 
     app.dependency_overrides[get_db] = lambda: Broken()
-    try:
-        res = client.get("/api/v1/health")
-    finally:
-        app.dependency_overrides.clear()
+    res = client.get("/api/v1/health")
     assert res.json()["status"] == "degraded"
     assert res.json()["database"] == "unavailable"
 

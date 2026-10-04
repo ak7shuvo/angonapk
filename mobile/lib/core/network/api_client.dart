@@ -25,12 +25,17 @@ class HttpApiClient implements ApiClient {
     required this._config,
     http.Client? client,
     this.tokenProvider,
+    this.onUnauthorized,
     this.timeout = const Duration(seconds: 20),
   }) : _client = client ?? http.Client();
 
   final AppConfig _config;
   final http.Client _client;
   final TokenProvider? tokenProvider;
+
+  /// Called when a request that carried a token is rejected with 401
+  /// (expired or revoked session).
+  final void Function()? onUnauthorized;
   final Duration timeout;
 
   Uri _uri(String path, [Map<String, String>? query]) {
@@ -40,8 +45,7 @@ class HttpApiClient implements ApiClient {
     return query == null ? base : base.replace(queryParameters: query);
   }
 
-  Future<Map<String, String>> _headers() async {
-    final token = await tokenProvider?.call();
+  Future<Map<String, String>> _headers({String? token}) async {
     return {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -75,8 +79,15 @@ class HttpApiClient implements ApiClient {
     Future<http.Response> Function(Map<String, String> headers) request,
   ) async {
     try {
-      final response = await request(await _headers()).timeout(timeout);
-      return _decode(response);
+      final token = await tokenProvider?.call();
+      final response = await request(await _headers(token: token))
+          .timeout(timeout);
+      try {
+        return _decode(response);
+      } on UnauthorizedException {
+        if (token != null) onUnauthorized?.call();
+        rethrow;
+      }
     } on AppException {
       rethrow;
     } on TimeoutException {

@@ -1,9 +1,11 @@
 from fastapi import APIRouter
 
-from app.api.v1 import health
+from app.api.v1 import auth, health, users
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router)
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
 
-# Planned routers (added per phase): auth, users, posts, stories, places,
+# Planned routers (added per phase): posts, stories, places,
 # comments, follows, notifications, reports.

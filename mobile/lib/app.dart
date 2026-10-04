@@ -1,28 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'routing/app_router.dart';
 
-class AngonApp extends StatefulWidget {
-  const AngonApp({super.key, this.router});
-
-  /// Injectable for tests.
-  final GoRouter? router;
+class AngonApp extends ConsumerWidget {
+  const AngonApp({super.key});
 
   @override
-  State<AngonApp> createState() => _AngonAppState();
-}
-
-class _AngonAppState extends State<AngonApp> {
-  late final GoRouter _router = widget.router ?? buildRouter();
-
-  @override
-  Widget build(BuildContext context) => MaterialApp.router(
+  Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
     title: 'ANGON',
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light(),
     darkTheme: AppTheme.dark(),
-    routerConfig: _router,
+    routerConfig: ref.watch(routerProvider),
   );
 }

@@ -21,3 +21,8 @@ Typography: variable fonts bundled in `assets/fonts` (Newsreader, Inter, Noto Se
 
 ## Extensibility
 Future entities (Experience, Host, Booking, Business, Community, Review, Payment) are intentionally not implemented; models will be added in their own modules.
+
+## Authentication (Phase 02)
+**Backend:** `models/` (`User`, `Profile`, `RevokedToken`) → `repositories/user_repository.py` → `services/auth_service.py` (register/login/authenticate/logout/profile) → `api/v1/auth.py`, `users.py`. `api/deps.py` provides `CurrentUser` (bearer token → active user, else 401). `core/security.py` holds Argon2 hashing and JWT encode/decode. Login verifies against a dummy hash for unknown users so timing does not reveal which accounts exist. Schema changes go through Alembic (`backend/migrations`); `env.py` reads `DATABASE_URL`.
+
+**Mobile:** `AuthController` (Riverpod `Notifier`) is the single source of truth: `AuthChecking → Unauthenticated | Authenticated(user) | AuthCheckFailed`. `Authenticated` is entered only after the server confirms a session. The token lives only in `flutter_secure_storage` (`TokenStorage`); `HttpApiClient` attaches it and calls back on a 401 so an expired/revoked session signs the user out. Routing uses a pure `authRedirect(state, location)` rule: signed-out → auth screens, incomplete profile → profile setup, otherwise the tab shell.
