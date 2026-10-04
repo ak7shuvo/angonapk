@@ -37,7 +37,6 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   go_router: ^18.0.2
   http: ^1.6.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

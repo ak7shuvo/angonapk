@@ -11,6 +11,10 @@ class LocalStorage:
         self._prefix = public_prefix.rstrip("/")
         self._root.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def root(self) -> Path:
+        return self._root
+
     def _path(self, key: str) -> Path:
         path = (self._root / key).resolve()
         if self._root not in path.parents:

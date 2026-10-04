@@ -54,9 +54,13 @@ class FakeBackend implements ApiClient {
     'user': users[username],
   };
 
+  /// Posts served by `GET /posts`, newest first. Pagination uses an integer
+  /// offset as the cursor (opaque to the app, like the real API).
+  final feed = <Map<String, dynamic>>[];
+
   @override
   Future<dynamic> get(String path, {Map<String, String>? query}) =>
-      _handle('GET', path, null);
+      _handle('GET', path, null, query);
   @override
   Future<dynamic> post(String path, {Object? body}) =>
       _handle('POST', path, body);
@@ -75,7 +79,12 @@ class FakeBackend implements ApiClient {
   /// Mirrors HttpApiClient: invoked when a request carrying a token gets 401.
   void Function()? onUnauthorized;
 
-  Future<dynamic> _handle(String method, String path, Object? body) async {
+  Future<dynamic> _handle(
+    String method,
+    String path,
+    Object? body, [
+    Map<String, String>? query,
+  ]) async {
     calls.add('$method $path');
     await Future<void>.delayed(Duration.zero);
     if (failWith != null) throw failWith!;
@@ -95,6 +104,15 @@ class FakeBackend implements ApiClient {
     switch ('$method $path') {
       case 'GET /health':
         return {'status': 'ok', 'environment': 'test', 'database': 'ok'};
+      case 'GET /posts':
+        requireUser();
+        final limit = int.parse(query?['limit'] ?? '20');
+        final start = int.parse(query?['cursor'] ?? '0');
+        final end = (start + limit).clamp(0, feed.length);
+        return {
+          'items': feed.sublist(start.clamp(0, feed.length), end),
+          'next_cursor': end < feed.length ? '$end' : null,
+        };
       case 'POST /auth/register':
         final fields = <String, String>{};
         if (users.values.any((u) => u['email'] == data!['email'])) {
@@ -144,3 +162,24 @@ class FakeBackend implements ApiClient {
     throw const NotFoundException();
   }
 }
+
+/// Builds a post JSON payload shaped like the API's `PostRead`.
+Map<String, dynamic> postJson(
+  String id, {
+  String? body = 'A sample post',
+  String? location,
+  String username = 'seed_rahim',
+  String authorId = 'author-1',
+  String? displayName = '[Seed] Rahim',
+  List<Map<String, dynamic>> media = const [],
+  String createdAt = '2026-01-01T00:00:00+00:00',
+}) => {
+  'id': id,
+  'body': body,
+  'location_text': location,
+  'place_id': null,
+  'media': media,
+  'author': {'id': authorId, 'username': username, 'display_name': displayName},
+  'created_at': createdAt,
+  'updated_at': createdAt,
+};

@@ -13,7 +13,7 @@ def test_migrations_upgrade_and_downgrade(tmp_path, monkeypatch):
         cfg = Config("alembic.ini")
         command.upgrade(cfg, "head")
         tables = set(inspect(create_engine(url)).get_table_names())
-        assert {"users", "profiles", "revoked_tokens"} <= tables
+        assert {"users", "profiles", "revoked_tokens", "posts", "post_media"} <= tables
         command.downgrade(cfg, "base")
         assert "users" not in set(inspect(create_engine(url)).get_table_names())
     finally:

@@ -5,6 +5,7 @@
 cd backend && cp .env.example .env && docker compose up -d db
 python -m venv .venv && . .venv/bin/activate && pip install -r requirements-dev.txt
 alembic upgrade head          # apply migrations (uses DATABASE_URL)
+python -m scripts.seed_dev    # optional dev-only SEED DATA (login: seed_rahim / seed-password-123)
 uvicorn app.main:app --reload
 ruff format . && ruff check . && pytest
 ```

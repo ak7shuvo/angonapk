@@ -8,7 +8,7 @@
 | API | `backend/` | FastAPI, SQLAlchemy 2, PostgreSQL |
 | Docs | `docs/` | Product, architecture, API, development, roadmap |
 
-Status: **Phase 02 (Authentication) complete.** See [docs/ROADMAP.md](docs/ROADMAP.md).
+Status: **Phase 03 (Home feed) complete.** See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -20,6 +20,7 @@ docker compose up -d db
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 alembic upgrade head
+python -m scripts.seed_dev           # optional: clearly-marked SEED DATA for the feed
 uvicorn app.main:app --reload        # http://localhost:8000/docs
 
 # Mobile (needs Flutter 3.47+)
