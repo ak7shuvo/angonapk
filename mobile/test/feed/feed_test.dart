@@ -195,7 +195,7 @@ void main() {
       await tester.tap(find.text('Share a discovery'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('composer arrives'),
+        find.text('What are you discovering?'),
         findsOneWidget,
       ); // Create tab
     });

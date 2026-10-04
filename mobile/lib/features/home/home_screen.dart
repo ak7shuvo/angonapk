@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../routing/routes.dart';
+import '../../models/post.dart';
 import '../../shared/widgets/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../feed/feed_controller.dart';
@@ -89,6 +90,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Future<void> _confirmDelete(Post post) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this post?'),
+        content: const Text(
+          'It will be removed for everyone, along with its photos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(feedControllerProvider.notifier).deletePost(post.id);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            e is AppException ? e.message : 'Could not delete the post.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   List<Widget> _body(FeedState feed, FeedController controller, String? myId) {
     switch (feed.status) {
       case FeedStatus.loading:
@@ -127,6 +164,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Only your own identity has a profile screen so far (Phase 07 adds others).
                 onAuthorTap: post.author.id == myId
                     ? () => context.go(AppRoutes.profile)
+                    : null,
+                onDelete: post.author.id == myId
+                    ? () => _confirmDelete(post)
                     : null,
               );
             },

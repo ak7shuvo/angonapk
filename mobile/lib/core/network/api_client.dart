@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../../config/app_config.dart';
 import '../errors/app_exception.dart';
@@ -15,6 +16,42 @@ abstract interface class ApiClient {
   Future<dynamic> put(String path, {Object? body});
   Future<dynamic> patch(String path, {Object? body});
   Future<dynamic> delete(String path);
+
+  /// Uploads one file as multipart/form-data. [onProgress] receives 0..1 as
+  /// request bytes are written to the socket.
+  Future<dynamic> upload(
+    String path, {
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    String field = 'file',
+    void Function(double progress)? onProgress,
+  });
+}
+
+/// MultipartRequest that reports how much of the body has been sent.
+class _ProgressMultipartRequest extends http.MultipartRequest {
+  _ProgressMultipartRequest(super.method, super.url, this.onProgress);
+  final void Function(double progress)? onProgress;
+
+  @override
+  http.ByteStream finalize() {
+    final total = contentLength;
+    var sent = 0;
+    final stream = super.finalize();
+    if (onProgress == null || total == 0) return stream;
+    return http.ByteStream(
+      stream.transform(
+        StreamTransformer.fromHandlers(
+          handleData: (data, sink) {
+            sent += data.length;
+            sink.add(data);
+            onProgress!(sent / total);
+          },
+        ),
+      ),
+    );
+  }
 }
 
 /// Supplies the current access token (if any). Wired to auth in Phase 02.
@@ -27,6 +64,7 @@ class HttpApiClient implements ApiClient {
     this.tokenProvider,
     this.onUnauthorized,
     this.timeout = const Duration(seconds: 20),
+    this.uploadTimeout = const Duration(seconds: 90),
   }) : _client = client ?? http.Client();
 
   final AppConfig _config;
@@ -37,6 +75,7 @@ class HttpApiClient implements ApiClient {
   /// (expired or revoked session).
   final void Function()? onUnauthorized;
   final Duration timeout;
+  final Duration uploadTimeout;
 
   Uri _uri(String path, [Map<String, String>? query]) {
     final base = Uri.parse(
@@ -68,6 +107,49 @@ class HttpApiClient implements ApiClient {
   @override
   Future<dynamic> patch(String path, {Object? body}) =>
       _send((h) => _client.patch(_uri(path), headers: h, body: _encode(body)));
+
+  @override
+  Future<dynamic> upload(
+    String path, {
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    String field = 'file',
+    void Function(double progress)? onProgress,
+  }) async {
+    try {
+      final token = await tokenProvider?.call();
+      final request = _ProgressMultipartRequest('POST', _uri(path), onProgress)
+        ..headers['Accept'] = 'application/json'
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            field,
+            bytes,
+            filename: filename,
+            contentType: MediaType.parse(contentType),
+          ),
+        );
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+      final streamed = await _client.send(request).timeout(uploadTimeout);
+      final response = await http.Response.fromStream(streamed);
+      try {
+        return _decode(response);
+      } on UnauthorizedException {
+        if (token != null) onUnauthorized?.call();
+        rethrow;
+      }
+    } on AppException {
+      rethrow;
+    } on TimeoutException {
+      throw const NetworkException('The upload timed out. Please try again.');
+    } on SocketException {
+      throw const NetworkException();
+    } on http.ClientException {
+      throw const NetworkException();
+    } on FormatException {
+      throw const ServerException('Received an unexpected response.');
+    }
+  }
 
   @override
   Future<dynamic> delete(String path) =>
@@ -118,6 +200,14 @@ class HttpApiClient implements ApiClient {
         );
       case 404:
         throw NotFoundException(message ?? 'We could not find that.');
+      case 413:
+        throw ValidationException(message ?? 'That file is too large.');
+      case 415:
+        throw ValidationException(
+          message ?? 'That file type is not supported.',
+        );
+      case 429:
+        throw const RateLimitedException();
       case 400:
       case 409:
       case 422:

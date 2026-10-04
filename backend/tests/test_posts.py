@@ -2,25 +2,9 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.models import Post, PostMedia, User
-
-API = "/api/v1"
-
-
-def make_user(client: TestClient, username: str = "rahim_bd") -> dict:
-    res = client.post(
-        f"{API}/auth/register",
-        json={
-            "email": f"{username}@example.com",
-            "username": username,
-            "password": "correct-horse-1",
-        },
-    )
-    assert res.status_code == 201, res.text
-    body = res.json()
-    return {"headers": {"Authorization": f"Bearer {body['access_token']}"}, "user": body["user"]}
+from app.models import MediaAsset, Post, PostMedia, User
+from tests.helpers import API, image_bytes, make_user, upload_id
 
 
 @pytest.fixture
@@ -70,29 +54,22 @@ def test_create_bengali_post(client, alice):
 
 
 def test_create_post_with_ordered_media(client, alice, db):
+    ids = [upload_id(client, alice, data=image_bytes(size=(100 + i, 80))) for i in range(3)]
     res = create(
         client,
         alice,
+        body="Three photos",
         media=[
-            {
-                "url": "https://cdn.example.com/a.jpg",
-                "width": 1200,
-                "height": 800,
-                "alt_text": "River",
-            },
-            {"url": "/media/seed/b.png"},
-            {"type": "video", "url": "https://cdn.example.com/c.mp4"},
+            {"asset_id": ids[2], "alt_text": "River"},
+            {"asset_id": ids[0]},
+            {"asset_id": ids[1]},
         ],
     )
     assert res.status_code == 201
     media = res.json()["media"]
-    assert [m["url"] for m in media] == [
-        "https://cdn.example.com/a.jpg",
-        "/media/seed/b.png",
-        "https://cdn.example.com/c.mp4",
-    ]
-    assert [m["type"] for m in media] == ["image", "image", "video"]
-    assert media[0]["width"] == 1200 and media[0]["alt_text"] == "River"
+    assert [m["width"] for m in media] == [102, 100, 101]  # request order preserved
+    assert media[0]["alt_text"] == "River" and media[0]["type"] == "image"
+    assert media[0]["url"].startswith("/media/u/")
     assert [m.position for m in db.query(PostMedia).order_by(PostMedia.position)] == [0, 1, 2]
 
 
@@ -125,12 +102,12 @@ def test_post_links_to_user_and_profile(client, alice, db):
         {"body": "   "},
         {"body": "x" * 2001},
         {"body": "ok", "location_text": "x" * 121},
-        {"body": "ok", "media": [{"url": "javascript:alert(1)"}]},
-        {"body": "ok", "media": [{"url": "ftp://example.com/a.jpg"}]},
-        {"body": "ok", "media": [{"url": "https://exa mple.com/a.jpg"}]},
-        {"body": "ok", "media": [{"url": "https://example.com/a.jpg", "type": "audio"}]},
-        {"body": "ok", "media": [{"url": "https://example.com/a.jpg", "width": 0}]},
-        {"body": "ok", "media": [{"url": "https://example.com/a.jpg"}] * 11},
+        {"body": "ok", "media": [{"url": "https://example.com/a.jpg"}]},  # URLs are not accepted
+        {"body": "ok", "media": [{"asset_id": "not-a-uuid"}]},
+        {"body": "ok", "media": [{"asset_id": str(uuid.uuid4())}] * 11},
+        {"body": "ok", "tags": ["x"]},
+        {"body": "ok", "tags": ["has space"]},
+        {"body": "ok", "tags": [f"tag{i}" for i in range(9)]},
         {"body": "ok", "place_id": str(uuid.uuid4())},
     ],
 )
@@ -139,7 +116,8 @@ def test_create_invalid_input(client, alice, body):
 
 
 def test_media_only_post_is_allowed(client, alice):
-    assert create(client, alice, media=[{"url": "https://example.com/a.jpg"}]).status_code == 201
+    asset = upload_id(client, alice)
+    assert create(client, alice, media=[{"asset_id": asset}]).status_code == 201
 
 
 # --- authorization ----------------------------------------------------------
@@ -243,10 +221,11 @@ def test_feed_rejects_bad_params(client, alice, params):
 
 
 def test_get_single_post(client, alice, bob):
-    post_id = create(client, alice, body="hello", media=[{"url": "/media/a.png"}]).json()["id"]
+    asset = upload_id(client, alice)
+    post_id = create(client, alice, body="hello", media=[{"asset_id": asset}]).json()["id"]
     res = client.get(f"{API}/posts/{post_id}", headers=bob["headers"])
     assert res.status_code == 200
-    assert res.json()["id"] == post_id and res.json()["media"][0]["url"] == "/media/a.png"
+    assert res.json()["id"] == post_id and res.json()["media"][0]["url"].startswith("/media/u/")
 
 
 def test_get_unknown_or_malformed_id(client, alice):
@@ -257,11 +236,16 @@ def test_get_unknown_or_malformed_id(client, alice):
 # --- delete / ownership -----------------------------------------------------
 
 
-def test_owner_can_delete_post_and_its_media(client, alice, db):
-    post_id = create(client, alice, body="bye", media=[{"url": "/media/a.png"}]).json()["id"]
-    assert client.delete(f"{API}/posts/{post_id}", headers=alice["headers"]).status_code == 204
-    assert client.get(f"{API}/posts/{post_id}", headers=alice["headers"]).status_code == 404
+def test_owner_can_delete_post_and_its_media(client, alice, db, storage):
+    asset = upload_id(client, alice)
+    post = create(client, alice, body="bye", media=[{"asset_id": asset}]).json()
+    stored = next(storage.root.rglob("*.png"))
+    assert stored.exists()
+    assert client.delete(f"{API}/posts/{post['id']}", headers=alice["headers"]).status_code == 204
+    assert client.get(f"{API}/posts/{post['id']}", headers=alice["headers"]).status_code == 404
     assert db.query(PostMedia).count() == 0
+    assert db.query(MediaAsset).count() == 0  # asset row removed...
+    assert not stored.exists()  # ...and so is the stored file
     assert client.get(f"{API}/posts", headers=alice["headers"]).json()["items"] == []
 
 
@@ -307,3 +291,16 @@ def test_seed_script_populates_feed_and_refuses_production(client, db_engine, mo
             seed_dev.main()
     finally:
         get_settings.cache_clear()
+
+
+# --- tags -------------------------------------------------------------------
+
+
+def test_tags_are_normalised_deduplicated_and_returned(client, alice):
+    res = create(client, alice, body="x", tags=["#Culture", "culture", "Food_2", "ঐতিহ্য"])
+    assert res.status_code == 201
+    assert res.json()["tags"] == ["culture", "food_2", "ঐতিহ্য"]
+    again = create(client, alice, body="y", tags=["CULTURE"])
+    assert again.json()["tags"] == ["culture"]  # tag row reused
+    feed = client.get(f"{API}/posts", headers=alice["headers"]).json()["items"]
+    assert [p["tags"] for p in feed] == [["culture"], ["culture", "food_2", "ঐতিহ্য"]]

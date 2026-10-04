@@ -5,7 +5,10 @@ import '../core/network/api_client.dart';
 import '../features/auth/auth_controller.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/health_repository.dart';
+import '../repositories/media_repository.dart';
 import '../repositories/post_repository.dart';
+import 'draft_store.dart';
+import 'image_picker_service.dart';
 import 'token_storage.dart';
 
 final appConfigProvider = Provider<AppConfig>(
@@ -42,3 +45,16 @@ final postRepositoryProvider = Provider<PostRepository>(
     mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
   ),
 );
+
+final mediaRepositoryProvider = Provider<MediaRepository>(
+  (ref) => MediaRepository(
+    ref.watch(apiClientProvider),
+    mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
+  ),
+);
+
+final imagePickerProvider = Provider<ImagePickerService>(
+  (_) => DeviceImagePicker(),
+);
+
+final draftStoreProvider = Provider<DraftStore>((_) => PrefsDraftStore());

@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -10,11 +11,25 @@ from app.db.session import get_db
 from app.models import User
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
+from app.storage.base import StorageBackend
+from app.storage.factory import build_storage
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+
+
+@lru_cache
+def _build_storage() -> StorageBackend:
+    return build_storage(get_settings())
+
+
+def get_storage() -> StorageBackend:
+    return _build_storage()
+
+
+Storage = Annotated[StorageBackend, Depends(get_storage)]
 
 
 def get_auth_service(db: DbSession, settings: AppSettings) -> AuthService:

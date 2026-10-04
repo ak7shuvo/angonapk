@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 import app.models  # noqa: E402,F401
+from app.api.deps import get_storage  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.storage.local import LocalStorage  # noqa: E402
 
 
 def _make_engine():
@@ -42,7 +44,12 @@ def db(db_engine) -> Session:
 
 
 @pytest.fixture
-def client(db_engine):
+def storage(tmp_path) -> LocalStorage:
+    return LocalStorage(str(tmp_path / "uploads"))
+
+
+@pytest.fixture
+def client(db_engine, storage):
     factory = sessionmaker(bind=db_engine, autoflush=False, expire_on_commit=False)
 
     def override_get_db():
@@ -50,5 +57,6 @@ def client(db_engine):
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_storage] = lambda: storage
     yield TestClient(app)
     app.dependency_overrides.clear()

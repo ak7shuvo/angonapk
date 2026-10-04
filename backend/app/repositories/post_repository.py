@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Post, PostMedia
+from app.models import MediaAsset, Post, PostMedia, Tag
 from app.schemas.post import PostCreate
 
 
@@ -15,21 +15,29 @@ class PostRepository:
     def get(self, post_id: uuid.UUID) -> Post | None:
         return self.db.get(Post, post_id)
 
-    def add(self, author_id: uuid.UUID, data: PostCreate) -> Post:
+    def add(
+        self,
+        author_id: uuid.UUID,
+        data: PostCreate,
+        assets: list[MediaAsset],
+        tags: list[Tag],
+    ) -> Post:
         post = Post(
             author_id=author_id,
             body=data.body,
             location_text=data.location_text,
+            tags=tags,
             media=[
                 PostMedia(
-                    media_type=m.type.value,
-                    url=m.url,
-                    width=m.width,
-                    height=m.height,
+                    asset_id=asset.id,
+                    media_type="image",
+                    url=asset.url,
+                    width=asset.width,
+                    height=asset.height,
                     alt_text=m.alt_text,
                     position=i,
                 )
-                for i, m in enumerate(data.media)
+                for i, (m, asset) in enumerate(zip(data.media, assets, strict=True))
             ],
         )
         self.db.add(post)

@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     storage_provider: str = "local"
     storage_local_dir: str = "./var/uploads"
 
+    # Uploads (images). Validated server-side regardless of what the client claims.
+    max_upload_bytes: int = 10 * 1024 * 1024
+    max_image_edge: int = 4096  # longest side after downscaling
+    max_image_pixels: int = 60_000_000  # decompression-bomb guard
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, v):

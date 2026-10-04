@@ -84,14 +84,14 @@ class FeedController extends Notifier<FeedState> {
     final gen = ++_generation;
     try {
       final page = await ref.read(postRepositoryProvider).fetchFeed();
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       state = FeedState(
         status: FeedStatus.ready,
         posts: page.items,
         nextCursor: page.nextCursor,
       );
     } catch (e) {
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       state = FeedState(status: FeedStatus.error, error: e);
     }
   }
@@ -107,20 +107,34 @@ class FeedController extends Notifier<FeedState> {
     final gen = ++_generation;
     try {
       final page = await ref.read(postRepositoryProvider).fetchFeed();
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       state = FeedState(
         status: FeedStatus.ready,
         posts: page.items,
         nextCursor: page.nextCursor,
       );
     } catch (e) {
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       if (state.posts.isEmpty) {
         state = FeedState(status: FeedStatus.error, error: e);
       } else {
         state = state.copyWith(refreshError: e);
       }
     }
+  }
+
+  /// A post the user just created appears at the top without a full reload.
+  void prependPost(Post post) {
+    if (state.status != FeedStatus.ready) return;
+    state = state.copyWith(
+      posts: [post, ...state.posts.where((p) => p.id != post.id)],
+    );
+  }
+
+  /// Deletes on the server first; the post leaves the list only once that succeeds.
+  Future<void> deletePost(String id) async {
+    await ref.read(postRepositoryProvider).deletePost(id);
+    state = state.copyWith(posts: [...state.posts.where((p) => p.id != id)]);
   }
 
   Future<void> loadMore() async {
@@ -136,7 +150,7 @@ class FeedController extends Notifier<FeedState> {
       final page = await ref
           .read(postRepositoryProvider)
           .fetchFeed(cursor: current.nextCursor);
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       final known = {for (final p in state.posts) p.id};
       state = state.copyWith(
         posts: [
@@ -147,7 +161,7 @@ class FeedController extends Notifier<FeedState> {
         loadingMore: false,
       );
     } catch (e) {
-      if (gen != _generation) return;
+      if (!ref.mounted || gen != _generation) return;
       state = state.copyWith(loadingMore: false, loadMoreError: e);
     }
   }

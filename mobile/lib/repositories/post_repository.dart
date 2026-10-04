@@ -29,15 +29,23 @@ class PostRepository {
     );
   }
 
-  /// Used by the composer (Phase 04); exposed now so the contract is tested.
+  /// [media] are ids returned by `MediaRepository.uploadImage`.
   Future<Post> createPost({
     String? body,
     String? locationText,
-    List<Map<String, Object?>> media = const [],
+    List<String> mediaIds = const [],
+    List<String> tags = const [],
   }) async {
     final json = await _api.post(
       '/posts',
-      body: {'body': ?body, 'location_text': ?locationText, 'media': media},
+      body: {
+        'body': ?body,
+        'location_text': ?locationText,
+        'media': [
+          for (final id in mediaIds) {'asset_id': id},
+        ],
+        'tags': tags,
+      },
     );
     return Post.fromJson(
       json as Map<String, dynamic>,

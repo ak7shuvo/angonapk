@@ -71,6 +71,7 @@ class Post {
     this.body,
     this.locationText,
     this.media = const [],
+    this.tags = const [],
   });
 
   final String id;
@@ -78,6 +79,7 @@ class Post {
   final String? body;
   final String? locationText;
   final List<PostMedia> media;
+  final List<String> tags;
   final DateTime createdAt;
 
   bool get hasMedia => media.isNotEmpty;
@@ -98,6 +100,7 @@ class Post {
           mediaBaseUrl: mediaBaseUrl,
         ),
     ],
+    tags: [for (final t in (json['tags'] as List? ?? const [])) t as String],
     createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
   );
 }

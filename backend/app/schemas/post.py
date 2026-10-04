@@ -1,10 +1,8 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated
 
 from pydantic import (
-    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -12,6 +10,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from app.schemas.tags import normalize_tags
 
 MAX_BODY = 2000
 MAX_MEDIA = 10
@@ -22,25 +22,12 @@ class MediaType(StrEnum):
     VIDEO = "video"
 
 
-def _check_media_url(v: str) -> str:
-    v = v.strip()
-    if not (v.startswith(("https://", "http://")) or v.startswith("/media/")):
-        raise ValueError("url must be http(s) or a /media/ path")
-    if " " in v or "\n" in v:
-        raise ValueError("url must not contain whitespace")
-    return v
-
-
-MediaUrl = Annotated[str, Field(min_length=1, max_length=2048), AfterValidator(_check_media_url)]
-
-
 class MediaCreate(BaseModel):
+    """Reference to a previously uploaded asset (POST /media)."""
+
     model_config = ConfigDict(extra="forbid")
 
-    type: MediaType = MediaType.IMAGE
-    url: MediaUrl
-    width: int | None = Field(default=None, gt=0, le=20000)
-    height: int | None = Field(default=None, gt=0, le=20000)
+    asset_id: uuid.UUID
     alt_text: str | None = Field(default=None, max_length=300)
 
 
@@ -50,6 +37,7 @@ class PostCreate(BaseModel):
     body: str | None = Field(default=None, max_length=MAX_BODY)
     location_text: str | None = Field(default=None, max_length=120)
     media: list[MediaCreate] = Field(default_factory=list, max_length=MAX_MEDIA)
+    tags: list[str] = Field(default_factory=list, max_length=20)
 
     @field_validator("body", "location_text")
     @classmethod
@@ -58,6 +46,11 @@ class PostCreate(BaseModel):
             return None
         v = v.strip()
         return v or None
+
+    @field_validator("tags")
+    @classmethod
+    def _tags(cls, v: list[str]) -> list[str]:
+        return normalize_tags(v)
 
     @model_validator(mode="after")
     def _needs_content(self) -> "PostCreate":
@@ -94,9 +87,15 @@ class PostRead(BaseModel):
     # Reserved: linked Place (Phase 09). Always null for now.
     place_id: uuid.UUID | None
     media: list[MediaRead]
+    tags: list[str]
     author: AuthorRead
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tag_names(cls, v):
+        return [t if isinstance(t, str) else t.name for t in v]
 
     @field_validator("author", mode="before")
     @classmethod

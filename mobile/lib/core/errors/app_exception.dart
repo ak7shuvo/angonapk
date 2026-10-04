@@ -46,3 +46,10 @@ class ServerException extends AppException {
     super.message = 'Something went wrong on our side. Please try again.',
   ]);
 }
+
+/// 429 — too many requests.
+class RateLimitedException extends AppException {
+  const RateLimitedException([
+    super.message = 'Too many requests. Please wait a moment and try again.',
+  ]);
+}

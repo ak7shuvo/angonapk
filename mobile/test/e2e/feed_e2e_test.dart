@@ -3,6 +3,8 @@
 //   flutter test test/e2e --dart-define=E2E_API_BASE_URL=http://127.0.0.1:8000
 //
 // Skipped unless the URL is provided. Uses plain `test` so real HTTP is allowed.
+import 'dart:convert';
+
 import 'package:angon/config/app_config.dart';
 import 'package:angon/core/errors/app_exception.dart';
 import 'package:angon/features/auth/auth_controller.dart';
@@ -13,6 +15,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _baseUrl = String.fromEnvironment('E2E_API_BASE_URL');
+
+// 1x1 PNG.
+final _png = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+);
 
 Future<void> _until(bool Function() cond) async {
   for (var i = 0; i < 200 && !cond(); i++) {
@@ -66,26 +73,27 @@ void main() {
           .updateProfile(displayName: "নুসরাত");
 
       final repo = c.read(postRepositoryProvider);
+      final upload = await c
+          .read(mediaRepositoryProvider)
+          .uploadImage(
+            bytes: _png,
+            filename: 'a.png',
+            contentType: 'image/png',
+            onProgress: (_) {},
+          );
+      expect(upload.url.startsWith('$_baseUrl/media/u/'), isTrue);
       final bengali = await repo.createPost(
         body: 'আজ জাফলংয়ে পাহাড়ের নিচে স্বচ্ছ জল।',
         locationText: 'জাফলং, সিলেট',
-        media: [
-          {
-            'type': 'image',
-            'url': '/media/seed/placeholder-0.png',
-            'width': 1200,
-            'height': 900,
-          },
-        ],
+        mediaIds: [upload.id],
+        tags: ['travel', 'ঐতিহ্য'],
       );
       await repo.createPost(body: 'Second post, English');
       final third = await repo.createPost(body: 'Third post');
 
       expect(bengali.author.username, username);
-      expect(
-        bengali.media.single.url,
-        '$_baseUrl/media/seed/placeholder-0.png',
-      );
+      expect(bengali.media.single.url, upload.url);
+      expect(bengali.tags, ['travel', 'ঐতিহ্য']);
 
       // Pagination through the real keyset cursor, 2 at a time.
       final first = await repo.fetchFeed(limit: 2);

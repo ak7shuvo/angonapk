@@ -9,6 +9,7 @@ import '../features/auth/profile_setup_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/auth/welcome_screen.dart';
+import '../features/composer/composer_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/shell/main_shell.dart';
@@ -70,11 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.create,
-                builder: (_, _) => const PlaceholderScreen(
-                  title: 'Create',
-                  icon: Icons.edit_outlined,
-                  message: 'What are you discovering? The composer arrives in Phase 04.',
-                ),
+                builder: (_, _) => const ComposerScreen(),
               ),
             ],
           ),

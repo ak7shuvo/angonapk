@@ -3,9 +3,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import AppSettings, CurrentUser, DbSession, Storage
+from app.repositories.media_repository import MediaRepository
 from app.repositories.post_repository import PostRepository
+from app.repositories.tag_repository import TagRepository
 from app.schemas.post import FeedPage, PostCreate, PostRead
+from app.services.media_service import MediaError, MediaService
 from app.services.post_service import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
@@ -18,8 +21,9 @@ from app.services.post_service import (
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
-def get_post_service(db: DbSession) -> PostService:
-    return PostService(PostRepository(db))
+def get_post_service(db: DbSession, storage: Storage, settings: AppSettings) -> PostService:
+    media = MediaService(MediaRepository(db), storage, settings)
+    return PostService(PostRepository(db), TagRepository(db), media)
 
 
 Posts = Annotated[PostService, Depends(get_post_service)]
@@ -27,7 +31,10 @@ Posts = Annotated[PostService, Depends(get_post_service)]
 
 @router.post("", response_model=PostRead, status_code=status.HTTP_201_CREATED)
 def create_post(data: PostCreate, user: CurrentUser, posts: Posts) -> PostRead:
-    return posts.create(user, data)
+    try:
+        return posts.create(user, data)
+    except MediaError as exc:
+        raise HTTPException(exc.status_code, exc.message) from None
 
 
 @router.get("", response_model=FeedPage)

@@ -73,6 +73,41 @@ class FakeBackend implements ApiClient {
   @override
   Future<dynamic> delete(String path) => _handle('DELETE', path, null);
 
+  /// Uploads accepted so far (id → filename) and a hook to make uploads fail.
+  final uploads = <String, String>{};
+  final deletedMedia = <String>[];
+  Object? Function(String filename)? uploadFailure;
+  final created = <Map<String, dynamic>>[];
+
+  @override
+  Future<dynamic> upload(
+    String path, {
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    String field = 'file',
+    void Function(double progress)? onProgress,
+  }) async {
+    calls.add('UPLOAD $path');
+    if (failWith != null) throw failWith!;
+    onProgress?.call(0.5);
+    await Future<void>.delayed(Duration.zero);
+    final failure = uploadFailure?.call(filename);
+    if (failure != null) throw failure;
+    onProgress?.call(1);
+    final id = 'asset-${uploads.length}';
+    uploads[id] = filename;
+    return {
+      'id': id,
+      'url': '/media/u/$id.png',
+      'kind': 'image',
+      'content_type': contentType,
+      'size_bytes': bytes.length,
+      'width': 100,
+      'height': 80,
+    };
+  }
+
   /// Returns the token the app would send (wired by the test harness).
   String? Function()? currentToken;
 
@@ -101,6 +136,17 @@ class FakeBackend implements ApiClient {
       return tokens[token]!;
     }
 
+    if (method == 'DELETE' && path.startsWith('/media/')) {
+      requireUser();
+      deletedMedia.add(path.substring('/media/'.length));
+      return null;
+    }
+    if (method == 'DELETE' && path.startsWith('/posts/')) {
+      requireUser();
+      final id = path.substring('/posts/'.length);
+      feed.removeWhere((p) => p['id'] == id);
+      return null;
+    }
     switch ('$method $path') {
       case 'GET /health':
         return {'status': 'ok', 'environment': 'test', 'database': 'ok'};
@@ -113,6 +159,32 @@ class FakeBackend implements ApiClient {
           'items': feed.sublist(start.clamp(0, feed.length), end),
           'next_cursor': end < feed.length ? '$end' : null,
         };
+      case 'POST /posts':
+        final username = requireUser();
+        final me = users[username]!;
+        final media = [
+          for (final m in (data!['media'] as List))
+            {
+              'id': 'pm-${m['asset_id']}',
+              'type': 'image',
+              'url': '/media/u/${m['asset_id']}.png',
+              'width': 100,
+              'height': 80,
+              'alt_text': null,
+            },
+        ];
+        final post = postJson(
+          'created-${created.length}',
+          body: data['body'] as String?,
+          location: data['location_text'] as String?,
+          username: username,
+          authorId: me['id'] as String,
+          displayName: (me['profile'] as Map)['display_name'] as String?,
+          media: media,
+        )..['tags'] = data['tags'];
+        created.add(post);
+        feed.insert(0, post);
+        return post;
       case 'POST /auth/register':
         final fields = <String, String>{};
         if (users.values.any((u) => u['email'] == data!['email'])) {

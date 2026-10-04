@@ -8,6 +8,8 @@ from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.media import MediaAsset
+from app.models.tag import Tag, post_tags
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -42,6 +44,7 @@ class Post(Base):
     )
 
     author: Mapped[User] = relationship(lazy="joined")
+    tags: Mapped[list[Tag]] = relationship(secondary=post_tags, order_by=Tag.name, lazy="selectin")
     media: Mapped[list[PostMedia]] = relationship(
         back_populates="post",
         cascade="all, delete-orphan",
@@ -57,6 +60,10 @@ class PostMedia(Base):
     post_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("posts.id", ondelete="CASCADE"), index=True
     )
+    # Set for uploaded media; null for development seed rows that only carry a URL.
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("media_assets.id", ondelete="SET NULL"), index=True
+    )
     media_type: Mapped[str] = mapped_column(String(16))  # "image" | "video"
     # Absolute http(s) URL or a storage-relative path such as "/media/...".
     url: Mapped[str] = mapped_column(String(2048))
@@ -66,3 +73,4 @@ class PostMedia(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
 
     post: Mapped[Post] = relationship(back_populates="media")
+    asset: Mapped[MediaAsset | None] = relationship(lazy="joined")

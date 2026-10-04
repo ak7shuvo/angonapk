@@ -12,10 +12,19 @@ import 'post_media_view.dart';
 /// A feed post. Media leads; text follows; text-only posts get an editorial
 /// pull-quote treatment so they feel like writing, not a status update.
 class PostCard extends StatelessWidget {
-  const PostCard({super.key, required this.post, this.onAuthorTap, this.now});
+  const PostCard({
+    super.key,
+    required this.post,
+    this.onAuthorTap,
+    this.onDelete,
+    this.now,
+  });
 
   final Post post;
   final VoidCallback? onAuthorTap;
+
+  /// Provided only for the signed-in author; shows a "Delete post" menu entry.
+  final VoidCallback? onDelete;
 
   /// Injectable clock for deterministic tests.
   final DateTime? now;
@@ -33,7 +42,12 @@ class PostCard extends StatelessWidget {
             AppSpacing.gutter,
             AppSpacing.md,
           ),
-          child: _Header(post: post, onTap: onAuthorTap, now: now),
+          child: _Header(
+            post: post,
+            onTap: onAuthorTap,
+            onDelete: onDelete,
+            now: now,
+          ),
         ),
         if (post.hasMedia) PostMediaView(media: post.media),
         if (post.hasText)
@@ -46,6 +60,27 @@ class PostCard extends StatelessWidget {
             ),
             child: _Body(post: post),
           ),
+        if (post.tags.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.sm,
+              AppSpacing.gutter,
+              0,
+            ),
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              children: [
+                for (final tag in post.tags)
+                  Text(
+                    '#$tag',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         const _ActionBar(),
         Divider(color: theme.dividerTheme.color, height: 1),
       ],
@@ -54,9 +89,15 @@ class PostCard extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.post, required this.onTap, required this.now});
+  const _Header({
+    required this.post,
+    required this.onTap,
+    required this.onDelete,
+    required this.now,
+  });
   final Post post;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
   final DateTime? now;
 
   @override
@@ -91,13 +132,31 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        onTap == null
-            ? who
-            : InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                child: who,
+        Row(
+          children: [
+            Expanded(
+              child: onTap == null
+                  ? who
+                  : InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      child: who,
+                    ),
+            ),
+            if (onDelete != null)
+              PopupMenuButton<String>(
+                tooltip: 'Post options',
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  color: AppColors.inkSoft,
+                ),
+                onSelected: (_) => onDelete!(),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'delete', child: Text('Delete post')),
+                ],
               ),
+          ],
+        ),
         if (post.locationText != null) ...[
           const SizedBox(height: AppSpacing.sm + 2),
           Row(
