@@ -11,6 +11,9 @@ abstract final class AppRoutes {
   static const stories = '/stories';
   static const profile = '/profile';
 
+  static const storyNew = '/story/new';
+  static String storyReadPath(String ref) => '/story/$ref';
+  static String storyEditPath(String id) => '/story/$id/edit';
   static String postPath(String id) => '/posts/$id';
   static String followersPath(String username) => '/u/$username/followers';
   static String followingPath(String username) => '/u/$username/following';

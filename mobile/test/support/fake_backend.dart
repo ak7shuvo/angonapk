@@ -155,6 +155,34 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  // Stories.
+  final stories = <Map<String, dynamic>>[];
+  final storyLikes = <String, Set<String>>{};
+  final storySaves = <String, List<String>>{};
+  int _storySeq = 0;
+
+  Map<String, dynamic> decorateStory(
+    Map<String, dynamic> story,
+    String viewer,
+  ) {
+    final id = story['id'] as String;
+    final author = (story['author'] as Map)['username'] as String;
+    return {
+      ...story,
+      'like_count': storyLikes[id]?.length ?? 0,
+      'liked_by_me': storyLikes[id]?.contains(viewer) ?? false,
+      'saved_by_me': storySaves[id]?.contains(viewer) ?? false,
+      'following_author': follows[viewer]?.contains(author) ?? false,
+    };
+  }
+
+  Map<String, dynamic> _summaryOf(Map<String, dynamic> story) {
+    final copy = {...story}
+      ..remove('content')
+      ..remove('media');
+    return copy;
+  }
+
   /// Returns the token the app would send (wired by the test harness).
   String? Function()? currentToken;
 
@@ -285,6 +313,13 @@ class FakeBackend implements ApiClient {
           ], query);
       }
     }
+    if (path == '/stories' ||
+        path.startsWith('/stories/') ||
+        path == '/users/me/saved/stories') {
+      final viewer = requireUser();
+      final result = _handleStories(method, path, data, query, viewer);
+      return result;
+    }
     final single = RegExp(r'^/posts/([^/]+)$').firstMatch(path);
     if (single != null && method == 'GET') {
       final viewer = requireUser();
@@ -405,4 +440,234 @@ Map<String, dynamic> postJson(
   'author': {'id': authorId, 'username': username, 'display_name': displayName},
   'created_at': createdAt,
   'updated_at': createdAt,
+};
+
+extension _StoryRoutes on FakeBackend {
+  dynamic _handleStories(
+    String method,
+    String path,
+    Map<String, dynamic>? data,
+    Map<String, String>? query,
+    String viewer,
+  ) {
+    Map<String, dynamic>? byRef(String ref) {
+      final found = stories.where((s) => s['id'] == ref || s['slug'] == ref);
+      if (found.isEmpty) return null;
+      final story = found.first;
+      final mine = (story['author'] as Map)['username'] == viewer;
+      if (story['status'] != 'published' && !mine) return null;
+      return story;
+    }
+
+    Map<String, dynamic> owned(String id) {
+      final story = byRef(id);
+      if (story == null) throw const NotFoundException('Story not found');
+      if ((story['author'] as Map)['username'] != viewer) {
+        throw const ForbiddenException('You can only change your own stories');
+      }
+      return story;
+    }
+
+    int readingMinutes(String content) {
+      final words = content
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .length;
+      return (words / 200).ceil().clamp(1, 1 << 30);
+    }
+
+    void applyFields(Map<String, dynamic> story, Map<String, dynamic> d) {
+      for (final key in ['title', 'content', 'location_text', 'tags']) {
+        if (d.containsKey(key)) story[key] = d[key];
+      }
+      if (d.containsKey('cover_asset_id')) {
+        final id = d['cover_asset_id'];
+        story['cover'] = id == null
+            ? null
+            : {
+                'id': id,
+                'url': '/media/u/$id.png',
+                'width': 1600,
+                'height': 900,
+              };
+      }
+      story['summary'] = (story['content'] as String)
+          .split(RegExp(r'\n\s*\n'))
+          .firstWhere((p) => p.trim().isNotEmpty, orElse: () => '');
+      story['reading_minutes'] = readingMinutes(story['content'] as String);
+      story['updated_at'] = '2026-02-01T00:00:00+00:00';
+    }
+
+    void requirePublishable(Map<String, dynamic> story) {
+      if ((story['title'] as String).trim().isEmpty ||
+          (story['content'] as String).trim().isEmpty) {
+        throw const ValidationException(
+          'A story needs a title and some content to be published',
+        );
+      }
+    }
+
+    if (method == 'POST' && path == '/stories') {
+      final me = users[viewer]!;
+      final id = 'story-${_storySeq++}';
+      final story = <String, dynamic>{
+        'id': id,
+        'slug': 'slug-$id',
+        'title': '',
+        'content': '',
+        'summary': '',
+        'cover': null,
+        'location_text': null,
+        'place_id': null,
+        'tags': <String>[],
+        'status': 'draft',
+        'published_at': null,
+        'reading_minutes': 1,
+        'media': <Map<String, dynamic>>[],
+        'author': {
+          'id': me['id'],
+          'username': viewer,
+          'display_name': (me['profile'] as Map)['display_name'],
+        },
+      };
+      applyFields(story, data!);
+      if (data['status'] == 'published') {
+        requirePublishable(story);
+        story['status'] = 'published';
+        story['published_at'] = '2026-02-01T00:00:00+00:00';
+      }
+      stories.insert(0, story);
+      return decorateStory(story, viewer);
+    }
+    if (method == 'GET' && path == '/stories') {
+      var list = [
+        for (final s in stories)
+          if (s['status'] == 'published') s,
+      ];
+      final author = query?['author'];
+      if (author != null) {
+        list = [
+          for (final s in list)
+            if ((s['author'] as Map)['username'] == author) s,
+        ];
+      }
+      final tag = query?['tag'];
+      if (tag != null) {
+        list = [
+          for (final s in list)
+            if ((s['tags'] as List).contains(tag)) s,
+        ];
+      }
+      return _pageOf([
+        for (final s in list) _summaryOf(decorateStory(s, viewer)),
+      ], query);
+    }
+    if (method == 'GET' && path == '/stories/mine') {
+      final status = query?['status'] ?? 'all';
+      return _pageOf([
+        for (final s in stories)
+          if ((s['author'] as Map)['username'] == viewer &&
+              (status == 'all' || s['status'] == status))
+            _summaryOf(decorateStory(s, viewer)),
+      ], query);
+    }
+    if (method == 'GET' && path == '/users/me/saved/stories') {
+      return _pageOf([
+        for (final s in stories)
+          if (storySaves[s['id']]?.contains(viewer) ?? false)
+            _summaryOf(decorateStory(s, viewer)),
+      ], query);
+    }
+    final m = RegExp(
+      r'^/stories/([^/]+)(?:/(related|publish|unpublish|like|save))?$',
+    ).firstMatch(path);
+    if (m == null) throw const NotFoundException();
+    final ref = m.group(1)!;
+    switch ((method, m.group(2))) {
+      case ('GET', null):
+        final story = byRef(ref);
+        if (story == null) throw const NotFoundException('Story not found');
+        return decorateStory(story, viewer);
+      case ('GET', 'related'):
+        final story = byRef(ref);
+        if (story == null) throw const NotFoundException('Story not found');
+        return [
+          for (final s in stories)
+            if (s['status'] == 'published' && s['id'] != story['id'])
+              _summaryOf(decorateStory(s, viewer)),
+        ];
+      case ('PATCH', null):
+        final story = owned(ref);
+        applyFields(story, data!);
+        if (story['status'] == 'published') requirePublishable(story);
+        return decorateStory(story, viewer);
+      case ('POST', 'publish'):
+        final story = owned(ref);
+        requirePublishable(story);
+        story['status'] = 'published';
+        story['published_at'] ??= '2026-02-01T00:00:00+00:00';
+        return decorateStory(story, viewer);
+      case ('POST', 'unpublish'):
+        final story = owned(ref);
+        story['status'] = 'draft';
+        return decorateStory(story, viewer);
+      case ('DELETE', null):
+        final story = owned(ref);
+        stories.remove(story);
+        return null;
+      case ('PUT', 'like'):
+        (storyLikes[ref] ??= {}).add(viewer);
+        return {'liked': true, 'like_count': storyLikes[ref]!.length};
+      case ('DELETE', 'like'):
+        storyLikes[ref]?.remove(viewer);
+        return {'liked': false, 'like_count': storyLikes[ref]?.length ?? 0};
+      case ('PUT', 'save'):
+        final list = storySaves[ref] ??= [];
+        if (!list.contains(viewer)) {
+          list.add(viewer);
+        }
+        return null;
+      case ('DELETE', 'save'):
+        storySaves[ref]?.remove(viewer);
+        return null;
+    }
+    throw const NotFoundException();
+  }
+
+  Map<String, dynamic> _pageOf(
+    List<Map<String, dynamic>> all,
+    Map<String, String>? query,
+  ) => _page(all, query);
+}
+
+/// A published story as the API would return it (full body).
+Map<String, dynamic> storyJson(
+  String id, {
+  String title = 'Jaflong: Beyond the Tourist View',
+  String content =
+      'The stones at Jaflong tell a quieter story.\n\nSecond paragraph.',
+  String status = 'published',
+  String username = 'seed_nusrat',
+  String authorId = 'author-2',
+  String? displayName = '[Seed] Nusrat',
+  List<String> tags = const ['heritage'],
+  String? location = 'Jaflong, Sylhet',
+  Map<String, dynamic>? cover,
+  List<Map<String, dynamic>> media = const [],
+}) => {
+  'id': id,
+  'slug': 'slug-$id',
+  'title': title,
+  'content': content,
+  'summary': content.split('\n\n').first,
+  'cover': cover,
+  'location_text': location,
+  'place_id': null,
+  'tags': tags,
+  'status': status,
+  'published_at': status == 'published' ? '2026-01-01T00:00:00+00:00' : null,
+  'updated_at': '2026-01-01T00:00:00+00:00',
+  'reading_minutes': 1,
+  'media': media,
+  'author': {'id': authorId, 'username': username, 'display_name': displayName},
 };

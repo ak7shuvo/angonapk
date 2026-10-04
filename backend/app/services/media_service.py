@@ -115,8 +115,14 @@ class MediaService:
             self.storage.delete(key)
             raise
 
-    def claim(self, owner: User, ids: list[uuid.UUID]) -> list[MediaAsset]:
-        """Resolve asset ids for attachment: must exist, be the owner's and be unattached.
+    def claim(
+        self,
+        owner: User,
+        ids: list[uuid.UUID],
+        allow_attached: frozenset[uuid.UUID] = frozenset(),
+    ) -> list[MediaAsset]:
+        """Resolve asset ids for attachment: must exist, be the owner's and be unattached
+        (unless listed in `allow_attached`, e.g. already part of the object being edited).
         Order of `ids` is preserved."""
         if len(set(ids)) != len(ids):
             raise AssetNotUsableError("Duplicate media ids")
@@ -126,7 +132,7 @@ class MediaService:
             asset = found.get(asset_id)
             if asset is None or asset.owner_id != owner.id:
                 raise AssetNotUsableError("Unknown media id")
-            if self.repo.is_attached(asset_id):
+            if asset_id not in allow_attached and self.repo.is_attached(asset_id):
                 raise AssetNotUsableError("Media is already used")
             assets.append(asset)
         return assets

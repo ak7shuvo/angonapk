@@ -96,3 +96,14 @@ def get_social_service(db: DbSession) -> SocialService:
 
 
 Social = Annotated[SocialService, Depends(get_social_service)]
+
+
+from app.repositories.story_repository import StoryRepository  # noqa: E402
+from app.services.story_service import StoryService  # noqa: E402
+
+
+def get_story_service(db: DbSession, media: Media) -> StoryService:
+    return StoryService(StoryRepository(db), TagRepository(db), media, UserRepository(db))
+
+
+Stories = Annotated[StoryService, Depends(get_story_service)]

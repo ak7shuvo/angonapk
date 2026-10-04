@@ -2,11 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import AuthSvc, CurrentUser, Posts, Social
+from app.api.deps import AuthSvc, CurrentUser, Posts, Social, Stories
 from app.core.pagination import InvalidCursorError
 from app.schemas.post import FeedPage
 from app.schemas.profile import ProfileUpdate
 from app.schemas.social import FollowState, UserPage
+from app.schemas.story import StoryPage
 from app.schemas.user import UserRead
 from app.services.post_service import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.services.social_service import SelfFollowError, UserMissingError
@@ -42,6 +43,17 @@ def my_saved_posts(
     except InvalidCursorError:
         raise HTTPException(422, "Invalid cursor") from None
     return FeedPage(items=posts.present(items, user), next_cursor=next_cursor)
+
+
+@router.get("/me/saved/stories", response_model=StoryPage)
+def my_saved_stories(
+    user: CurrentUser, stories: Stories, limit: Limit = DEFAULT_PAGE_SIZE, cursor: Cursor = None
+) -> StoryPage:
+    try:
+        items, next_cursor = stories.saved(user, limit=limit, cursor=cursor)
+    except InvalidCursorError:
+        raise HTTPException(422, "Invalid cursor") from None
+    return StoryPage(items=stories.summaries(items, user), next_cursor=next_cursor)
 
 
 @router.put("/{username}/follow", response_model=FollowState)

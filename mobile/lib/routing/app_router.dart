@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../models/post.dart';
 import '../features/social/post_detail_screen.dart';
+import '../features/stories/stories_screen.dart';
+import '../features/stories/story_editor_screen.dart';
+import '../features/stories/story_reader_screen.dart';
 import '../features/social/user_list_screen.dart';
 
 import '../features/auth/auth_controller.dart';
@@ -69,6 +72,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           kind: UserListKind.following,
         ),
       ),
+      GoRoute(
+        path: AppRoutes.storyNew,
+        builder: (_, _) => const StoryEditorScreen(),
+      ),
+      GoRoute(
+        path: '/story/:id/edit',
+        builder: (_, state) =>
+            StoryEditorScreen(storyId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/story/:ref',
+        builder: (_, state) =>
+            StoryReaderScreen(refId: state.pathParameters['ref']!),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => MainShell(navigationShell: shell),
         branches: [
@@ -104,11 +121,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.stories,
-                builder: (_, _) => const PlaceholderScreen(
-                  title: 'Stories',
-                  icon: Icons.auto_stories_outlined,
-                  message: 'Long-form travel and cultural stories. Coming in Phase 06.',
-                ),
+                builder: (_, _) => const StoriesScreen(),
               ),
             ],
           ),
