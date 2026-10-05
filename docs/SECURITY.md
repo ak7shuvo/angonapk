@@ -27,8 +27,8 @@ ANGON V1 has been reviewed and hardened for development and staging use. **It is
 - No email verification, password reset, account deletion/export, or two-factor authentication.
 - No audit log of moderation actions beyond the reviewer id and time on each report; moderation does not yet remove content or suspend accounts.
 - Image content is not scanned (no malware or NSFW detection).
-- Search is substring matching and unauthenticated reads of public content require a token but not any further scoping.
-- The Android release build, the Dockerfile, and the GitHub workflows other than the ones that have run in this repository have not been exercised in the development environment.
+- All public content is readable by any signed-in user; there are no private accounts or blocking yet.
+- The Android release build and the Dockerfile have not been built in the development environment, and the `android.yml` workflow had not run when this was written.
 
 ## Required before real users
 1. **Object storage** (S3/R2/GCS) behind `StorageBackend`, private bucket plus CDN, and scheduled orphan-media cleanup. Without it uploads cannot be served in production.
