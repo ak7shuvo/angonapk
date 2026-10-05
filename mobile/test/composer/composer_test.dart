@@ -10,6 +10,7 @@ import 'package:angon/services/draft_store.dart';
 import 'package:angon/services/image_picker_service.dart';
 import 'package:angon/services/providers.dart';
 import 'package:angon/services/token_storage.dart';
+import 'package:angon/features/feed/widgets/post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -532,12 +533,27 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    final ownMenu = find.descendant(
+      of: find.ancestor(
+        of: find.text('my own post'),
+        matching: find.byType(PostCard),
+      ),
+      matching: find.byTooltip('Post options'),
+    );
+
     testWidgets('only own posts offer delete; confirming removes the post', (
       tester,
     ) async {
       await bootFeed(tester);
-      expect(find.byTooltip('Post options'), findsOneWidget);
-      await tester.tap(find.byTooltip('Post options'));
+      expect(find.byTooltip('Post options'), findsNWidgets(2));
+      // Own post offers delete; someone else's offers report instead.
+      await tester.tap(find.byTooltip('Post options').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Delete post'), findsNothing);
+      expect(find.text('Report post'), findsOneWidget);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      await tester.tap(ownMenu);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete post'));
       await tester.pumpAndSettle();
@@ -553,7 +569,7 @@ void main() {
       tester,
     ) async {
       await bootFeed(tester);
-      await tester.tap(find.byTooltip('Post options'));
+      await tester.tap(ownMenu);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete post'));
       await tester.pumpAndSettle();
@@ -561,7 +577,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('my own post'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Post options'));
+      await tester.tap(ownMenu);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Delete post'));
       await tester.pumpAndSettle();
