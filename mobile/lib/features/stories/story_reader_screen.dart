@@ -72,6 +72,9 @@ class _ReaderState extends ConsumerState<_Reader> {
     super.dispose();
   }
 
+  void _back() =>
+      context.canPop() ? context.pop() : context.go(AppRoutes.stories);
+
   Future<void> _menu(String action) async {
     final story = widget.story;
     final repo = ref.read(storyRepositoryProvider);
@@ -145,17 +148,21 @@ class _ReaderState extends ConsumerState<_Reader> {
                 leadingWidth: 56,
                 leading: Padding(
                   padding: const EdgeInsets.all(4), // 48dp tap target
-                  child: IconButton.filled(
-                    tooltip: 'Back',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.black45,
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => context.canPop()
-                        ? context.pop()
-                        : context.go(AppRoutes.stories),
-                  ),
+                  child: hasCover
+                      ? IconButton.filled(
+                          tooltip: 'Back',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black45,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: _back,
+                        )
+                      : IconButton(
+                          tooltip: 'Back',
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: _back,
+                        ),
                 ),
                 actions: [
                   if (isMine)

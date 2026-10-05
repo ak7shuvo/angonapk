@@ -236,13 +236,8 @@ class _PlaceAppBar extends ConsumerWidget {
       leadingWidth: 56,
       leading: Padding(
         padding: const EdgeInsets.all(4), // 48dp tap target
-        child: IconButton.filled(
-          tooltip: 'Back',
-          style: IconButton.styleFrom(
-            backgroundColor: hasCover ? Colors.black45 : null,
-            foregroundColor: hasCover ? Colors.white : null,
-          ),
-          icon: const Icon(Icons.arrow_back_rounded),
+        child: _BackButton(
+          overPhoto: hasCover,
           onPressed: () =>
               context.canPop() ? context.pop() : context.go(AppRoutes.home),
         ),
@@ -404,3 +399,28 @@ class _Tabs extends StatelessWidget {
 /// Convenience used by posts/stories to open a place.
 void openPlace(BuildContext context, PlaceBrief place) =>
     context.push(AppRoutes.placePath(place.slug));
+
+/// Back button for a photo-topped app bar: a translucent disc over a photo,
+/// a plain icon button on the paper background.
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.overPhoto, required this.onPressed});
+  final bool overPhoto;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => overPhoto
+      ? IconButton.filled(
+          tooltip: 'Back',
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.black45,
+            foregroundColor: Colors.white,
+          ),
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: onPressed,
+        )
+      : IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: onPressed,
+        );
+}

@@ -124,6 +124,17 @@ abstract final class AppTheme {
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.transparent,
+        // Selected chips take a quiet terracotta tint, not Material's default pink.
+        selectedColor: scheme.primary.withValues(alpha: 0.14),
+        checkmarkColor: scheme.primary,
+        side: BorderSide(color: line),
+        labelStyle: text.labelLarge,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scaffold,
         indicatorColor: scheme.primary.withValues(alpha: 0.12),
