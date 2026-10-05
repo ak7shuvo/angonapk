@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import AdminUser, CurrentUser, Reports
 from app.core.pagination import InvalidCursorError
+from app.core.rate_limit import limit_by_user
 from app.models.report import STATUSES, TARGET_TYPES
 from app.schemas.report import (
     ReportAdminPage,
@@ -24,7 +25,12 @@ from app.services.report_service import (
 router = APIRouter(tags=["moderation"])
 
 
-@router.post("/reports", response_model=ReportReceipt, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/reports",
+    response_model=ReportReceipt,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_user("report", 10, 600)],
+)
 def create_report(data: ReportCreate, user: CurrentUser, reports: Reports) -> ReportReceipt:
     """Report a post, story, comment or profile for review by moderators."""
     try:

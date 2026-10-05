@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.deps import CurrentUser, Posts, Social
 from app.core.pagination import InvalidCursorError
+from app.core.rate_limit import limit_by_user
 from app.schemas.post import FeedPage, PostCreate, PostRead
 from app.schemas.social import CommentCreate, CommentPage, CommentRead, LikeState
 from app.services.media_service import MediaError
@@ -24,7 +25,12 @@ Cursor = Annotated[str | None, Query(max_length=200)]
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Post not found")
 
 
-@router.post("", response_model=PostRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=PostRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_user("post", 30, 3600)],
+)
 def create_post(data: PostCreate, user: CurrentUser, posts: Posts) -> PostRead:
     try:
         post = posts.create(user, data)
@@ -145,7 +151,12 @@ def list_comments(
     return CommentPage(items=items, next_cursor=next_cursor)
 
 
-@router.post("/{post_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{post_id}/comments",
+    response_model=CommentRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_user("comment", 60, 3600)],
+)
 def add_comment(
     post_id: uuid.UUID, data: CommentCreate, user: CurrentUser, social: Social
 ) -> CommentRead:

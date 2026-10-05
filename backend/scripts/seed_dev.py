@@ -12,6 +12,7 @@ Re-running replaces the previous seed posts. Seed accounts share the password
 printed below; that is acceptable only because this refuses to run in production.
 """
 
+import os
 import struct
 import zlib
 from datetime import UTC, datetime, timedelta
@@ -85,6 +86,8 @@ def _clear_previous(db, users: dict[str, User], storage) -> None:
 
 
 def main() -> None:
+    if os.environ.get("APP_ENV") == "production":
+        raise SystemExit("Refusing to seed development data in production.")
     settings = get_settings()
     if settings.is_production:
         raise SystemExit("Refusing to seed development data in production.")

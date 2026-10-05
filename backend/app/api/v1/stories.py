@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.deps import CurrentUser, Stories
 from app.core.pagination import InvalidCursorError
+from app.core.rate_limit import limit_by_user
 from app.schemas.social import LikeState
 from app.schemas.story import StoryCreate, StoryPage, StoryRead, StorySummary, StoryUpdate
 from app.services.story_service import StoryError
@@ -20,7 +21,12 @@ def _http(exc: StoryError) -> HTTPException:
     return HTTPException(exc.status_code, exc.message)
 
 
-@router.post("", response_model=StoryRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=StoryRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_user("story", 20, 3600)],
+)
 def create_story(data: StoryCreate, user: CurrentUser, stories: Stories) -> StoryRead:
     try:
         return stories.present(stories.create(user, data), user)

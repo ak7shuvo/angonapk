@@ -1,0 +1,7 @@
+# Copy to android/key.properties (git-ignored) and fill in. NEVER commit the real file or the keystore.
+# Create a keystore once:
+#   keytool -genkey -v -keystore ~/angon-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+storePassword=<keystore password>
+keyPassword=<key password>
+keyAlias=upload
+storeFile=/absolute/path/to/angon-upload.jks

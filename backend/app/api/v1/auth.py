@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.api.deps import AuthSvc, CurrentUser, Token
+from app.api.deps import AppSettings, AuthSvc, CurrentUser, Token
+from app.core.rate_limit import enforce, limit_by_ip
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.services.auth_service import DuplicateAccountError, InvalidCredentialsError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_ip("register", 10, 3600)],
+)
 def register(data: RegisterRequest, auth: AuthSvc) -> TokenResponse:
     try:
         user, token, expires = auth.register(data)
@@ -19,8 +25,14 @@ def register(data: RegisterRequest, auth: AuthSvc) -> TokenResponse:
     return TokenResponse(access_token=token, expires_at=expires, user=user)
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(data: LoginRequest, auth: AuthSvc) -> TokenResponse:
+@router.post("/login", response_model=TokenResponse, dependencies=[limit_by_ip("login", 20, 60)])
+def login(
+    data: LoginRequest, auth: AuthSvc, request: Request, settings: AppSettings
+) -> TokenResponse:
+    # Per account as well as per IP, so one account can't be guessed from many IPs
+    # at full speed, nor many accounts from one IP. Counted before checking the
+    # password so a correct guess after the limit is still refused.
+    enforce(settings, f"login:id:{data.identifier.strip().lower()}", 10, 300)
     try:
         user, token, expires = auth.login(data)
     except InvalidCredentialsError:

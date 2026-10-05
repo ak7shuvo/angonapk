@@ -4,13 +4,19 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile, status
 
 from app.api.deps import AppSettings, CurrentUser, Media
+from app.core.rate_limit import limit_by_user
 from app.schemas.media import MediaAssetRead
 from app.services.media_service import MediaError
 
 router = APIRouter(prefix="/media", tags=["media"])
 
 
-@router.post("", response_model=MediaAssetRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=MediaAssetRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[limit_by_user("upload", 60, 600)],
+)
 def upload_media(
     file: UploadFile,
     request: Request,

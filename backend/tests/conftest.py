@@ -2,6 +2,8 @@ import os
 
 # Must be set before the app modules read settings.
 os.environ.setdefault("APP_ENV", "test")
+# Most tests make many requests from one client; the limiter has its own tests.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
