@@ -184,10 +184,7 @@ class _Header extends ConsumerWidget {
             if (onDelete != null || onReport != null)
               PopupMenuButton<String>(
                 tooltip: 'Post options',
-                icon: const Icon(
-                  Icons.more_horiz_rounded,
-                  color: AppColors.inkSoft,
-                ),
+                icon: Icon(Icons.more_horiz_rounded, color: context.inkSoft),
                 onSelected: (v) => v == 'delete' ? onDelete!() : onReport!(),
                 itemBuilder: (_) => [
                   if (onDelete != null)
@@ -327,25 +324,24 @@ class _ActionBar extends ConsumerWidget {
       required String tooltip,
       required VoidCallback? onPressed,
       int count = 0,
-    }) => Semantics(
-      label: label,
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 160),
-          transitionBuilder: (child, anim) =>
-              ScaleTransition(scale: anim, child: child),
-          child: Icon(icon, key: ValueKey(icon), color: color, size: 24),
-        ),
-        label: Text(
-          count > 0 ? '$count' : '',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.inkSoft,
-          minimumSize: const Size(48, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-        ),
+    }) => TextButton.icon(
+      onPressed: onPressed,
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 160),
+        transitionBuilder: (child, anim) =>
+            ScaleTransition(scale: anim, child: child),
+        child: Icon(icon, key: ValueKey(icon), color: color, size: 24),
+      ),
+      label: Text(
+        count > 0 ? '$count' : '',
+        // The visible text is only a count; name the action for screen readers.
+        semanticsLabel: count > 0 ? '$label, $count' : label,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: context.inkSoft,
+        minimumSize: const Size(48, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
       ),
     );
 
@@ -360,7 +356,7 @@ class _ActionBar extends ConsumerWidget {
             icon: engagement.liked
                 ? Icons.favorite_rounded
                 : Icons.favorite_border_rounded,
-            color: engagement.liked ? scheme.primary : AppColors.inkSoft,
+            color: engagement.liked ? scheme.primary : context.inkSoft,
             label: engagement.liked ? 'Unlike' : 'Like',
             tooltip: 'Like',
             count: engagement.likeCount,
@@ -372,7 +368,7 @@ class _ActionBar extends ConsumerWidget {
           ),
           counted(
             icon: Icons.chat_bubble_outline_rounded,
-            color: AppColors.inkSoft,
+            color: context.inkSoft,
             label: 'Comments',
             tooltip: 'Comments',
             count: engagement.commentCount,
@@ -382,7 +378,7 @@ class _ActionBar extends ConsumerWidget {
             icon: engagement.saved
                 ? Icons.bookmark_rounded
                 : Icons.bookmark_border_rounded,
-            color: engagement.saved ? scheme.primary : AppColors.inkSoft,
+            color: engagement.saved ? scheme.primary : context.inkSoft,
             label: engagement.saved ? 'Remove from saved' : 'Save',
             tooltip: 'Save',
             onPressed: () => guarded(
@@ -394,7 +390,7 @@ class _ActionBar extends ConsumerWidget {
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),
-            color: AppColors.inkSoft,
+            color: context.inkSoft,
             tooltip: 'Share (coming soon)',
             onPressed: () => showComingSoon(context, 'Share'),
           ),

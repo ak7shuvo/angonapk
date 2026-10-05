@@ -31,3 +31,15 @@ abstract final class AppColors {
   static const nightInkSoft = Color(0xFFB8AF9F);
   static const nightLine = Color(0xFF3A342B);
 }
+
+/// Theme-aware neutrals. The light-mode ink/paper constants have too little
+/// contrast on the dark surfaces, so widgets ask the context instead.
+extension AppColorsContext on BuildContext {
+  bool get _isDark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Secondary text and icon colour (meets contrast on both surfaces).
+  Color get inkSoft => _isDark ? AppColors.nightInkSoft : AppColors.inkSoft;
+
+  /// Background of image placeholders and failed/loading photos.
+  Color get placeholder => _isDark ? AppColors.nightCard : AppColors.paperDeep;
+}

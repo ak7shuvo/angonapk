@@ -68,7 +68,7 @@ class MapScreen extends ConsumerWidget {
                 horizontal: AppSpacing.gutter,
                 vertical: 8,
               ),
-              color: AppColors.paperDeep.withValues(alpha: 0.6),
+              color: context.placeholder.withValues(alpha: 0.6),
               child: Text(
                 'Map view is not configured (MAP_PROVIDER). Showing places as a list.',
                 style: theme.textTheme.bodySmall,
@@ -402,7 +402,7 @@ class _NearbyRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.inkSoft),
+          Icon(icon, size: 18, color: context.inkSoft),
           const SizedBox(width: AppSpacing.sm + 2),
           Expanded(
             child: Text(

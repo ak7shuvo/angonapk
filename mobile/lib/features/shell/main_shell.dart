@@ -36,14 +36,21 @@ class MainShell extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: navigationShell,
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: navigationShell.currentIndex,
-      destinations: _destinations,
-      onDestinationSelected: (i) => navigationShell.goBranch(
-        i,
-        initialLocation: i == navigationShell.currentIndex,
+  Widget build(BuildContext context) => PopScope(
+    // Android back from another tab returns to HOME first; only HOME exits.
+    canPop: navigationShell.currentIndex == 0,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) navigationShell.goBranch(0);
+    },
+    child: Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        destinations: _destinations,
+        onDestinationSelected: (i) => navigationShell.goBranch(
+          i,
+          initialLocation: i == navigationShell.currentIndex,
+        ),
       ),
     ),
   );

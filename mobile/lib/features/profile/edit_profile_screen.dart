@@ -285,7 +285,7 @@ class _CoverEditor extends ConsumerWidget {
             ColoredBox(
               color: theme.brightness == Brightness.dark
                   ? AppColors.nightCard
-                  : AppColors.paperDeep,
+                  : context.placeholder,
             ),
           Positioned(
             right: 8,
@@ -325,6 +325,6 @@ class _CoverImage extends ConsumerWidget {
     resolveMediaUrl(ref.watch(appConfigProvider).apiBaseUrl, url),
     fit: BoxFit.cover,
     semanticLabel: 'Cover photo',
-    errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.paperDeep),
+    errorBuilder: (_, _, _) => ColoredBox(color: context.placeholder),
   );
 }

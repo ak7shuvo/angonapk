@@ -113,9 +113,9 @@ class StoryBody extends StatelessWidget {
                       semanticLabel: caption.isEmpty ? 'Story photo' : caption,
                       loadingBuilder: (_, child, p) => p == null
                           ? child
-                          : const ColoredBox(color: AppColors.paperDeep),
-                      errorBuilder: (_, _, _) => const ColoredBox(
-                        color: AppColors.paperDeep,
+                          : ColoredBox(color: context.placeholder),
+                      errorBuilder: (_, _, _) => ColoredBox(
+                        color: context.placeholder,
                         child: Center(
                           child: Icon(
                             Icons.image_not_supported_outlined,

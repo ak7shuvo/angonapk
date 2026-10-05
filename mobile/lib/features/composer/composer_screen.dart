@@ -136,7 +136,14 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
                     imageUrl: me.profile.avatarUrl,
                   ),
                   const SizedBox(width: AppSpacing.md - 4),
-                  Text(me.displayName, style: theme.textTheme.titleSmall),
+                  Expanded(
+                    child: Text(
+                      me.displayName,
+                      style: theme.textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             const SizedBox(height: AppSpacing.md),
@@ -304,19 +311,25 @@ class _PhotoStrip extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.add_photo_alternate_outlined,
-                          color: Theme.of(context).colorScheme.primary,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add photos',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Add photos',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -357,7 +370,7 @@ class _Thumb extends StatelessWidget {
                 fit: BoxFit.cover,
                 cacheWidth: 300,
                 errorBuilder: (_, _, _) =>
-                    const ColoredBox(color: AppColors.paperDeep),
+                    ColoredBox(color: context.placeholder),
               ),
               if (a.status == UploadStatus.uploading)
                 ColoredBox(

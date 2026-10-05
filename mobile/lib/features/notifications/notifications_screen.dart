@@ -41,30 +41,52 @@ class NotificationsScreen extends ConsumerWidget {
     final controller = ref.read(notificationsProvider.notifier);
     listenForRefreshErrors(ref, notificationsProvider, context);
     final hasUnread = state.items.any((n) => !n.isRead);
+    // The labelled button no longer fits the app bar with very large text.
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 22;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
           if (hasUnread)
-            TextButton(
-              onPressed: () async {
-                try {
-                  await controller.markAllRead();
-                } catch (e) {
-                  if (context.mounted) {
-                    showAppSnack(
-                      context,
-                      errorMessage(
-                        e,
-                        fallback: 'Could not update notifications.',
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Mark all read'),
-            ),
+            largeText
+                ? IconButton(
+                    tooltip: 'Mark all read',
+                    icon: const Icon(Icons.done_all),
+                    onPressed: () async {
+                      try {
+                        await controller.markAllRead();
+                      } catch (e) {
+                        if (context.mounted) {
+                          showAppSnack(
+                            context,
+                            errorMessage(
+                              e,
+                              fallback: 'Could not update notifications.',
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  )
+                : TextButton(
+                    onPressed: () async {
+                      try {
+                        await controller.markAllRead();
+                      } catch (e) {
+                        if (context.mounted) {
+                          showAppSnack(
+                            context,
+                            errorMessage(
+                              e,
+                              fallback: 'Could not update notifications.',
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Mark all read'),
+                  ),
         ],
       ),
       body: PagedScrollView(

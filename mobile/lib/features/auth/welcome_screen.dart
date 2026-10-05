@@ -13,32 +13,43 @@ class WelcomeScreen extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.gutter),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Spacer(),
-              const AngonWordmark(size: 44),
-              const SizedBox(height: AppSpacing.lg),
-              Text('Places. People. Stories.', style: text.displayMedium),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Discover destinations, share what you find, and keep the '
-                'stories and culture of Bangladesh alive.',
-                style: text.bodyLarge,
+        // Scrolls (instead of overflowing) with large text or short screens.
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.gutter),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - AppSpacing.gutter * 2,
               ),
-              const Spacer(flex: 2),
-              FilledButton(
-                onPressed: () => context.go(AppRoutes.register),
-                child: const Text('Create account'),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Spacer(),
+                    const AngonWordmark(size: 44),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text('Places. People. Stories.', style: text.displayMedium),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Discover destinations, share what you find, and keep the '
+                      'stories and culture of Bangladesh alive.',
+                      style: text.bodyLarge,
+                    ),
+                    const Spacer(flex: 2),
+                    const SizedBox(height: AppSpacing.lg),
+                    FilledButton(
+                      onPressed: () => context.go(AppRoutes.register),
+                      child: const Text('Create account'),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton(
+                      onPressed: () => context.go(AppRoutes.login),
+                      child: const Text('Sign in'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton(
-                onPressed: () => context.go(AppRoutes.login),
-                child: const Text('Sign in'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

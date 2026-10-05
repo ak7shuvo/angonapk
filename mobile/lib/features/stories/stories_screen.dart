@@ -50,14 +50,14 @@ class _StoriesScreenState extends ConsumerState<StoriesScreen> {
           const SizedBox(width: AppSpacing.sm),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          preferredSize: const Size.fromHeight(56),
           child: SizedBox(
-            height: 52,
+            height: 56,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.gutter,
-                vertical: 8,
+                vertical: 4, // leaves the chips a full 48dp tap target
               ),
               children: [
                 for (final (s, label) in [

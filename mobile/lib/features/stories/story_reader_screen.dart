@@ -142,8 +142,9 @@ class _ReaderState extends ConsumerState<_Reader> {
                 expandedHeight: hasCover
                     ? MediaQuery.sizeOf(context).height * 0.52
                     : null,
+                leadingWidth: 56,
                 leading: Padding(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(4), // 48dp tap target
                   child: IconButton.filled(
                     tooltip: 'Back',
                     style: IconButton.styleFrom(
@@ -202,7 +203,7 @@ class _ReaderState extends ConsumerState<_Reader> {
                             fit: BoxFit.cover,
                             semanticLabel: 'Story cover photo',
                             errorBuilder: (_, _, _) =>
-                                const ColoredBox(color: AppColors.paperDeep),
+                                ColoredBox(color: context.placeholder),
                           ),
                         ),
                       )
@@ -404,42 +405,52 @@ class _ActionRow extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          TextButton.icon(
-            onPressed: () => guarded(
-              context,
-              () => controller.toggleLike(story),
-              fallback: 'Could not update your like.',
-            ),
-            icon: Icon(
-              e.liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: e.liked ? scheme.primary : AppColors.inkSoft,
-            ),
-            label: Text(e.likeCount > 0 ? '${e.likeCount}' : 'Like'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.inkSoft,
-              minimumSize: const Size(48, 48),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () => guarded(
+                    context,
+                    () => controller.toggleLike(story),
+                    fallback: 'Could not update your like.',
+                  ),
+                  icon: Icon(
+                    e.liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: e.liked ? scheme.primary : context.inkSoft,
+                  ),
+                  label: Text(e.likeCount > 0 ? '${e.likeCount}' : 'Like'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.inkSoft,
+                    minimumSize: const Size(48, 48),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => guarded(
+                    context,
+                    () => controller.toggleSave(story),
+                    fallback: 'Could not update saved stories.',
+                  ),
+                  icon: Icon(
+                    e.saved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    color: e.saved ? scheme.primary : context.inkSoft,
+                  ),
+                  label: Text(e.saved ? 'Saved' : 'Save'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.inkSoft,
+                    minimumSize: const Size(48, 48),
+                  ),
+                ),
+              ],
             ),
           ),
-          TextButton.icon(
-            onPressed: () => guarded(
-              context,
-              () => controller.toggleSave(story),
-              fallback: 'Could not update saved stories.',
-            ),
-            icon: Icon(
-              e.saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-              color: e.saved ? scheme.primary : AppColors.inkSoft,
-            ),
-            label: Text(e.saved ? 'Saved' : 'Save'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.inkSoft,
-              minimumSize: const Size(48, 48),
-            ),
-          ),
-          const Spacer(),
           IconButton(
             icon: const Icon(Icons.ios_share_rounded),
-            color: AppColors.inkSoft,
+            color: context.inkSoft,
             tooltip: 'Share (coming soon)',
             onPressed: () => showComingSoon(context, 'Share'),
           ),

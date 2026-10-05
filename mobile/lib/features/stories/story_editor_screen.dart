@@ -183,6 +183,8 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         if (_content.text.contains('asset:$id')) state.images[id]!,
     ];
 
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+
     return PopScope(
       canPop: !state.dirty,
       onPopInvokedWithResult: (didPop, _) async {
@@ -199,21 +201,25 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
           ),
           title: Text(state.isPublished ? 'Edit story' : 'New story'),
           actions: [
-            if (!state.isPublished)
+            if (!state.isPublished && !largeText)
               TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(48, 40),
+                ),
                 onPressed: state.canSaveDraft && state.dirty
                     ? _saveDraft
                     : null,
                 child: const Text('Save draft'),
               ),
             Padding(
-              padding: const EdgeInsets.only(
-                left: 4,
-                right: AppSpacing.gutter - 4,
-              ),
+              padding: const EdgeInsets.only(left: 4, right: AppSpacing.sm),
               child: FilledButton(
                 onPressed: state.canPublish ? _publish : null,
-                style: FilledButton.styleFrom(minimumSize: const Size(96, 40)),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(72, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
                 child: state.saving
                     ? const SizedBox(
                         width: 18,
@@ -223,12 +229,23 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                     : Text(state.isPublished ? 'Save' : 'Publish'),
               ),
             ),
-            if (state.id != null)
+            if (state.id != null || (!state.isPublished && largeText))
               PopupMenuButton<String>(
                 tooltip: 'More',
-                onSelected: (_) => _delete(),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'delete', child: Text('Delete story')),
+                onSelected: (v) => v == 'draft' ? _saveDraft() : _delete(),
+                itemBuilder: (_) => [
+                  // With large text the draft button no longer fits the bar.
+                  if (!state.isPublished && largeText)
+                    PopupMenuItem(
+                      value: 'draft',
+                      enabled: state.canSaveDraft && state.dirty,
+                      child: const Text('Save draft'),
+                    ),
+                  if (state.id != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete story'),
+                    ),
                 ],
               ),
           ],
@@ -338,10 +355,10 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                                 width: 64,
                                 height: 64,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => const SizedBox(
+                                errorBuilder: (_, _, _) => SizedBox(
                                   width: 64,
                                   height: 64,
-                                  child: ColoredBox(color: AppColors.paperDeep),
+                                  child: ColoredBox(color: context.placeholder),
                                 ),
                               ),
                             ),
@@ -452,26 +469,35 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: Row(
               children: [
-                _ToolButton(
-                  label: 'Heading',
-                  icon: Icons.title_rounded,
-                  onTap: () => _applyEdit(
-                    toggleLinePrefix(_content.text, _caret, '## '),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _ToolButton(
+                          label: 'Heading',
+                          icon: Icons.title_rounded,
+                          onTap: () => _applyEdit(
+                            toggleLinePrefix(_content.text, _caret, '## '),
+                          ),
+                        ),
+                        _ToolButton(
+                          label: 'Quote',
+                          icon: Icons.format_quote_rounded,
+                          onTap: () => _applyEdit(
+                            toggleLinePrefix(_content.text, _caret, '> '),
+                          ),
+                        ),
+                        _ToolButton(
+                          label: 'Photo',
+                          icon: Icons.add_photo_alternate_outlined,
+                          busy: state.uploads > 0,
+                          onTap: state.uploads > 0 ? null : _insertPhoto,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                _ToolButton(
-                  label: 'Quote',
-                  icon: Icons.format_quote_rounded,
-                  onTap: () =>
-                      _applyEdit(toggleLinePrefix(_content.text, _caret, '> ')),
-                ),
-                _ToolButton(
-                  label: 'Photo',
-                  icon: Icons.add_photo_alternate_outlined,
-                  busy: state.uploads > 0,
-                  onTap: state.uploads > 0 ? null : _insertPhoto,
-                ),
-                const Spacer(),
                 Text(
                   '${state.content.length}/$maxStoryLength',
                   style: theme.textTheme.bodySmall,
@@ -536,8 +562,7 @@ class _CoverPicker extends StatelessWidget {
               cover.url,
               fit: BoxFit.cover,
               semanticLabel: 'Cover photo',
-              errorBuilder: (_, _, _) =>
-                  const ColoredBox(color: AppColors.paperDeep),
+              errorBuilder: (_, _, _) => ColoredBox(color: context.placeholder),
             )
           else
             Semantics(
@@ -548,22 +573,25 @@ class _CoverPicker extends StatelessWidget {
                 child: ColoredBox(
                   color: theme.brightness == Brightness.dark
                       ? AppColors.nightCard
-                      : AppColors.paperDeep,
+                      : context.placeholder,
                   child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.add_photo_alternate_outlined,
-                          size: 36,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Add a cover photo',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_outlined,
+                            size: 36,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Add a cover photo',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

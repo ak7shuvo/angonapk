@@ -39,7 +39,11 @@ class FollowButton extends ConsumerWidget {
           ),
       fallback: 'Could not update follow. Please try again.',
     );
-    final label = Text(following ? 'Following' : 'Follow');
+    final text = Text(following ? 'Following' : 'Follow');
+    // Compact buttons sit in tight rows; don't let huge text push them off-screen.
+    final label = compact
+        ? MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3, child: text)
+        : text;
     final size = compact ? const Size(0, 34) : const Size(110, 44);
     return following
         ? OutlinedButton(

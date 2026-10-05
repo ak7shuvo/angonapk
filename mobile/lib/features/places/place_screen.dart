@@ -195,7 +195,7 @@ class _PlaceScreenState extends ConsumerState<PlaceScreen> {
                   fit: BoxFit.cover,
                   cacheWidth: 400,
                   errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.paperDeep),
+                      ColoredBox(color: context.placeholder),
                 ),
               ),
             );
@@ -233,8 +233,9 @@ class _PlaceAppBar extends ConsumerWidget {
       expandedHeight: hasCover
           ? MediaQuery.sizeOf(context).height * 0.34
           : null,
+      leadingWidth: 56,
       leading: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(4), // 48dp tap target
         child: IconButton.filled(
           tooltip: 'Back',
           style: IconButton.styleFrom(
@@ -262,7 +263,7 @@ class _PlaceAppBar extends ConsumerWidget {
                   fit: BoxFit.cover,
                   semanticLabel: 'Photo of ${place.name}',
                   errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.paperDeep),
+                      ColoredBox(color: context.placeholder),
                 ),
               ),
             )
@@ -314,7 +315,7 @@ class _PlaceHeader extends StatelessWidget {
                 size: 22,
                 weight: 500,
                 height: 1.5,
-              ).copyWith(color: AppColors.inkSoft),
+              ).copyWith(color: context.inkSoft),
             ),
           if (place.description.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
@@ -330,18 +331,9 @@ class _PlaceHeader extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Text(
-                '${place.postCount} posts',
-                style: theme.textTheme.bodySmall,
-              ),
-              Text('  ·  ', style: theme.textTheme.bodySmall),
-              Text(
-                '${place.storyCount} stories',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+          Text(
+            '${place.postCount} posts  ·  ${place.storyCount} stories',
+            style: theme.textTheme.bodySmall,
           ),
         ],
       ),
@@ -379,7 +371,7 @@ class _Tabs extends StatelessWidget {
                 child: InkWell(
                   onTap: () => onSelect(t),
                   child: Container(
-                    height: 46,
+                    height: 48,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border(

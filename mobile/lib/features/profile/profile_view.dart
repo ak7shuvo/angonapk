@@ -344,7 +344,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   fit: BoxFit.cover,
                   cacheWidth: 400,
                   errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.paperDeep),
+                      ColoredBox(color: context.placeholder),
                 ),
               ),
             );
@@ -468,6 +468,18 @@ class _Header extends ConsumerWidget {
     );
     final followers = overlay?.followersCount ?? profile.counts.followers;
     final dark = theme.brightness == Brightness.dark;
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+    final Widget action = profile.isMe
+        ? OutlinedButton(
+            onPressed: () => context.push(AppRoutes.profileEdit),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(110, 40)),
+            child: const Text('Edit profile'),
+          )
+        : FollowButton(
+            username: profile.username,
+            initiallyFollowing: profile.isFollowing,
+            followersCount: profile.counts.followers,
+          );
 
     Widget stat(String label, int value, {VoidCallback? onTap}) => Expanded(
       child: InkWell(
@@ -509,7 +521,7 @@ class _Header extends ConsumerWidget {
                       fit: BoxFit.cover,
                       semanticLabel: 'Cover photo',
                       errorBuilder: (_, _, _) =>
-                          const ColoredBox(color: AppColors.paperDeep),
+                          ColoredBox(color: context.placeholder),
                     ),
             ),
             Positioned(
@@ -562,22 +574,11 @@ class _Header extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (profile.isMe)
-                    OutlinedButton(
-                      onPressed: () => context.push(AppRoutes.profileEdit),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(110, 40),
-                      ),
-                      child: const Text('Edit profile'),
-                    )
-                  else
-                    FollowButton(
-                      username: profile.username,
-                      initiallyFollowing: profile.isFollowing,
-                      followersCount: profile.counts.followers,
-                    ),
+                  if (!largeText) action,
                 ],
               ),
+              // With large text the button no longer fits beside the name.
+              if (largeText) ...[const SizedBox(height: AppSpacing.sm), action],
               if (profile.creatorType != null || profile.location != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
@@ -595,15 +596,19 @@ class _Header extends ConsumerWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.place_outlined,
                             size: 16,
-                            color: AppColors.inkSoft,
+                            color: context.inkSoft,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            profile.location!,
-                            style: theme.textTheme.bodySmall,
+                          Flexible(
+                            child: Text(
+                              profile.location!,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -671,7 +676,7 @@ class _TabRow extends StatelessWidget {
                 child: InkWell(
                   onTap: () => onSelect(t),
                   child: Container(
-                    height: 46,
+                    height: 48,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border(

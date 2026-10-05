@@ -157,11 +157,15 @@ class _SearchField extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.search, color: AppColors.inkSoft),
+                Icon(Icons.search, color: context.inkSoft),
                 const SizedBox(width: AppSpacing.sm + 2),
-                Text(
-                  'Search places, people, stories',
-                  style: theme.textTheme.bodyMedium,
+                Expanded(
+                  child: Text(
+                    'Search places, people, stories',
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -192,15 +196,17 @@ class _Section extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Semantics(
-              header: true,
-              child: Text(
-                title,
-                style: AppTypography.serif(
-                  size: 24,
-                  weight: 650,
-                  height: 1.3,
-                ).copyWith(color: Theme.of(context).colorScheme.onSurface),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: AppTypography.serif(
+                    size: 24,
+                    weight: 650,
+                    height: 1.3,
+                  ).copyWith(color: Theme.of(context).colorScheme.onSurface),
+                ),
               ),
             ),
             ?action,
@@ -327,7 +333,7 @@ class _TrendingPosts extends StatelessWidget {
                                     padding: const EdgeInsets.all(
                                       AppSpacing.md,
                                     ),
-                                    color: AppColors.paperDeep,
+                                    color: context.placeholder,
                                     alignment: Alignment.topLeft,
                                     child: Text(
                                       post.body ?? '',
@@ -344,9 +350,8 @@ class _TrendingPosts extends StatelessWidget {
                                     image.url,
                                     fit: BoxFit.cover,
                                     cacheWidth: 500,
-                                    errorBuilder: (_, _, _) => const ColoredBox(
-                                      color: AppColors.paperDeep,
-                                    ),
+                                    errorBuilder: (_, _, _) =>
+                                        ColoredBox(color: context.placeholder),
                                   ),
                           ),
                         ),
