@@ -6,11 +6,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/time_format.dart';
+import '../../models/report.dart';
 import '../../models/story.dart';
 import '../../routing/routes.dart';
 import '../../shared/widgets/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../feed/widgets/coming_soon.dart';
+import '../moderation/report_sheet.dart';
 import '../social/follow_button.dart';
 import '../../services/providers.dart';
 import 'story_controllers.dart';
@@ -172,6 +174,21 @@ class _ReaderState extends ConsumerState<_Reader> {
                         const PopupMenuItem(
                           value: 'delete',
                           child: Text('Delete story'),
+                        ),
+                      ],
+                    )
+                  else
+                    PopupMenuButton<String>(
+                      tooltip: 'Story options',
+                      onSelected: (_) => showReportSheet(
+                        context,
+                        target: ReportTarget.story,
+                        targetId: story.id,
+                      ),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'report',
+                          child: Text('Report story'),
                         ),
                       ],
                     ),

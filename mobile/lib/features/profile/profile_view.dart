@@ -8,6 +8,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/media_url.dart';
 import '../../models/post.dart';
 import '../../models/public_profile.dart';
+import '../../models/report.dart';
 import '../../models/story.dart';
 import '../../models/user.dart';
 import '../../routing/routes.dart';
@@ -17,6 +18,7 @@ import '../../shared/paged/paged_controller.dart';
 import '../../shared/paged/paged_views.dart';
 import '../../shared/widgets/widgets.dart';
 import '../feed/widgets/post_tile.dart';
+import '../moderation/report_sheet.dart';
 import '../places/place_controllers.dart';
 import '../places/widgets/place_tile.dart';
 import '../social/follow_button.dart';
@@ -420,7 +422,18 @@ class _ProfileAppBar extends ConsumerWidget {
           icon: const Icon(Icons.more_vert),
           onPressed: () => _accountMenu(context, ref),
         ),
-      ],
+      ] else
+        PopupMenuButton<String>(
+          tooltip: 'Profile options',
+          onSelected: (_) => showReportSheet(
+            context,
+            target: ReportTarget.user,
+            targetId: profile.id,
+          ),
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'report', child: Text('Report profile')),
+          ],
+        ),
     ],
   );
 

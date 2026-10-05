@@ -10,6 +10,7 @@ from app.api.v1 import (
     notifications,
     places,
     posts,
+    reports,
     stories,
     users,
 )
@@ -26,5 +27,4 @@ api_router.include_router(places.router)
 api_router.include_router(explore.router)
 api_router.include_router(map.router)
 api_router.include_router(notifications.router)
-
-# Planned routers (added per phase): reports.
+api_router.include_router(reports.router)

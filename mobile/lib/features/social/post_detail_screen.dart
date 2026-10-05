@@ -8,7 +8,9 @@ import '../../models/post.dart';
 import '../../models/social.dart';
 import '../../services/providers.dart';
 import '../../shared/widgets/widgets.dart';
+import '../../models/report.dart';
 import '../auth/auth_controller.dart';
+import '../moderation/report_sheet.dart';
 import '../feed/widgets/post_card.dart';
 import '../feed/widgets/post_tile.dart';
 import 'comments_controller.dart';
@@ -137,6 +139,13 @@ class _PostConversationState extends ConsumerState<_PostConversation> {
                             }
                           }
                         : null,
+                    onReport: isMine
+                        ? null
+                        : () => showReportSheet(
+                            context,
+                            target: ReportTarget.post,
+                            targetId: post.id,
+                          ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -186,6 +195,13 @@ class _PostConversationState extends ConsumerState<_PostConversation> {
                                 fallback: 'Could not delete the comment.',
                               )
                             : null,
+                        onReport: c.isMine
+                            ? null
+                            : () => showReportSheet(
+                                context,
+                                target: ReportTarget.comment,
+                                targetId: c.id,
+                              ),
                       ),
                     if (comments.hasMore)
                       const Padding(
@@ -262,9 +278,11 @@ class _CommentTile extends StatelessWidget {
     super.key,
     required this.comment,
     required this.onDelete,
+    required this.onReport,
   });
   final Comment comment;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +331,16 @@ class _CommentTile extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.delete_outline, size: 20),
               onPressed: onDelete,
+            )
+          else if (onReport != null)
+            PopupMenuButton<String>(
+              tooltip: 'Comment options',
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.more_horiz_rounded, size: 20),
+              onSelected: (_) => onReport!(),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'report', child: Text('Report comment')),
+              ],
             ),
         ],
       ),

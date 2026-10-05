@@ -24,6 +24,7 @@ class PostCard extends ConsumerWidget {
     required this.post,
     this.onAuthorTap,
     this.onDelete,
+    this.onReport,
     this.onOpenComments,
     this.isMine = false,
     this.now,
@@ -34,6 +35,9 @@ class PostCard extends ConsumerWidget {
 
   /// Provided only for the signed-in author; shows a "Delete post" menu entry.
   final VoidCallback? onDelete;
+
+  /// Provided for other people's posts; shows a "Report post" menu entry.
+  final VoidCallback? onReport;
 
   /// Opens the post's comments; null when already on the post screen.
   final VoidCallback? onOpenComments;
@@ -59,6 +63,7 @@ class PostCard extends ConsumerWidget {
             post: post,
             onTap: onAuthorTap,
             onDelete: onDelete,
+            onReport: onReport,
             isMine: isMine,
             now: now,
           ),
@@ -107,6 +112,7 @@ class _Header extends ConsumerWidget {
     required this.post,
     required this.onTap,
     required this.onDelete,
+    required this.onReport,
     required this.isMine,
     required this.now,
   });
@@ -114,6 +120,7 @@ class _Header extends ConsumerWidget {
   final Post post;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
   final DateTime? now;
 
   @override
@@ -174,16 +181,25 @@ class _Header extends ConsumerWidget {
                 initiallyFollowing: post.followingAuthor,
                 compact: true,
               ),
-            if (onDelete != null)
+            if (onDelete != null || onReport != null)
               PopupMenuButton<String>(
                 tooltip: 'Post options',
                 icon: const Icon(
                   Icons.more_horiz_rounded,
                   color: AppColors.inkSoft,
                 ),
-                onSelected: (_) => onDelete!(),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'delete', child: Text('Delete post')),
+                onSelected: (v) => v == 'delete' ? onDelete!() : onReport!(),
+                itemBuilder: (_) => [
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete post'),
+                    )
+                  else
+                    const PopupMenuItem(
+                      value: 'report',
+                      child: Text('Report post'),
+                    ),
                 ],
               ),
           ],

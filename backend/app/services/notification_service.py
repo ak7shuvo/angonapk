@@ -73,6 +73,20 @@ class NotificationService:
             self.repo.db.rollback()
             log.exception("could not create %s notification", type)
 
+    def system(
+        self, recipient: uuid.UUID, *, type: str, data: dict, target_type=None, target_id=None
+    ):
+        """A notice with no actor (e.g. a moderation outcome); shown via data.title/body."""
+        self._create(
+            recipient=recipient,
+            actor=None,
+            type=type,
+            target_type=target_type,
+            target_id=target_id,
+            data=data,
+            dedupe=False,
+        )
+
     def post_liked(self, actor: User, post) -> None:
         self._create(
             recipient=post.author_id,

@@ -6,6 +6,8 @@ import '../../../models/post.dart';
 import '../../../routing/routes.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../auth/auth_controller.dart';
+import '../../moderation/report_sheet.dart';
+import '../../../models/report.dart';
 import '../../social/post_removals.dart';
 import 'post_card.dart';
 
@@ -29,6 +31,13 @@ class PostTile extends ConsumerWidget {
       onAuthorTap: () =>
           openProfile(context, post.author.username, isMe: isMine),
       onDelete: isMine ? () => confirmDeletePost(context, ref, post) : null,
+      onReport: isMine
+          ? null
+          : () => showReportSheet(
+              context,
+              target: ReportTarget.post,
+              targetId: post.id,
+            ),
       onOpenComments: () =>
           context.push(AppRoutes.postPath(post.id), extra: post),
     );

@@ -158,6 +158,9 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  /// Reports filed via `POST /reports`.
+  final reports = <Map<String, dynamic>>[];
+
   /// Notifications served by `/notifications`, newest first.
   final notifications = <Map<String, dynamic>>[];
 
@@ -325,6 +328,21 @@ class FakeBackend implements ApiClient {
               userSummary(f, viewer),
           ], query);
       }
+    }
+    if (method == 'POST' && path == '/reports') {
+      final me = requireUser();
+      final key = '${data!['target_type']}:${data['target_id']}';
+      if (reports.any((r) => r['key'] == key && r['reporter'] == me)) {
+        throw const ValidationException('You have already reported this');
+      }
+      reports.add({...data, 'key': key, 'reporter': me});
+      return {
+        'id': 'r${reports.length}',
+        'target_type': data['target_type'],
+        'target_id': data['target_id'],
+        'reason': data['reason'],
+        'status': 'open',
+      };
     }
     if (path.startsWith('/notifications')) {
       requireUser();

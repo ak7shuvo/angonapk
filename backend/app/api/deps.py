@@ -182,3 +182,21 @@ def get_explore_service(
 
 
 Explorer = Annotated[ExploreService, Depends(get_explore_service)]
+
+
+from app.repositories.report_repository import ReportRepository  # noqa: E402
+from app.services.report_service import ReportService  # noqa: E402
+
+
+def get_report_service(db: DbSession, notifier: Notifier) -> ReportService:
+    return ReportService(
+        ReportRepository(db),
+        PostRepository(db),
+        StoryRepository(db),
+        UserRepository(db),
+        SocialRepository(db),
+        notifier,
+    )
+
+
+Reports = Annotated[ReportService, Depends(get_report_service)]

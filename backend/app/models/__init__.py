@@ -5,6 +5,7 @@ from app.models.notification import Notification
 from app.models.place import Place
 from app.models.post import Post, PostMedia
 from app.models.profile import Profile
+from app.models.report import Report
 from app.models.revoked_token import RevokedToken
 from app.models.social import Comment, Follow, PostLike, PostSave
 from app.models.story import Story, StoryLike, StoryMedia, StorySave, story_tags
@@ -33,6 +34,7 @@ __all__ = [
     "PostSave",
     "PostMedia",
     "Profile",
+    "Report",
     "RevokedToken",
     "Story",
     "StoryLike",
