@@ -1,7 +1,8 @@
 """DEVELOPMENT SEED DATA — never run against production.
 
 Creates clearly marked placeholder accounts (`seed_*`, display name prefixed
-"[Seed]") and posts so the feed has something to render during development.
+"[Seed]"), posts and stories linked to places in Bangladesh so every screen has
+something to render during development.
 All text is invented sample content, NOT verified real-world information or
 real user content. Images are flat-colour placeholder PNGs, not photographs.
 
@@ -19,58 +20,33 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.security import hash_password
+from app.core.text import slugify
 from app.db.session import get_session_factory
-from app.models import Post, PostMedia, Profile, User
+from app.models import MediaAsset, Post, PostMedia, Profile, Story, User
+from app.repositories.story_repository import StoryRepository
+from app.repositories.tag_repository import TagRepository
 from app.storage.factory import build_storage
+from scripts.seed_content import (
+    SEED_DRAFT,
+    SEED_DRAFT_TITLE,
+    SEED_PASSWORD,
+    SEED_POSTS,
+    SEED_STORIES,
+    SEED_USERS,
+    STORY_DISCLAIMER,
+)
 from scripts.seed_places import seed_places
 
-SEED_PASSWORD = "seed-password-123"  # development only
-
-SEED_USERS = [
-    ("seed_rahim", "[Seed] Rahim", "photographer", "Sylhet"),
-    ("seed_nusrat", "[Seed] নুসরাত", "storyteller", "Dhaka"),
-    ("seed_tanvir", "[Seed] Tanvir", "traveler", "Rajshahi"),
-]
-
-# (username, text, location, hours_ago, placeholder colours)
 WARM = [(0xB4, 0x53, 0x2A), (0x2F, 0x5D, 0x50), (0xD9, 0xA4, 0x41), (0x8C, 0x3E, 0x1D)]
-SEED_POSTS = [
-    (
-        "seed_rahim",
-        "Early light over the haor. The water was completely still.",
-        "Tanguar Haor, Sunamganj",
-        1,
-        [0, 1],
-    ),
-    (
-        "seed_nusrat",
-        "আজ সকালে জাফলংয়ে পাহাড়ের নিচে স্বচ্ছ জলের পাশে বসে ছিলাম। এখানকার নীরবতা ভাষায় প্রকাশ করা কঠিন।",
-        "জাফলং, সিলেট",
-        3,
-        [2],
-    ),
-    (
-        "seed_tanvir",
-        "Terracotta details on an old temple wall. Worth the early start.",
-        "Paharpur, Naogaon",
-        8,
-        [3, 0, 1],
-    ),
-    (
-        "seed_nusrat",
-        "চায়ের বাগানে বিকেল। শ্রীমঙ্গলের এই সবুজ ঢেউ দেখে মন ভরে যায়।",
-        "শ্রীমঙ্গল, মৌলভীবাজার",
-        20,
-        [],
-    ),
-    (
-        "seed_rahim",
-        "Notes from a slow day in Sonargaon: crumbling facades, quiet lanes, good tea.",
-        "Sonargaon",
-        30,
-        [1],
-    ),
-    ("seed_tanvir", "Ferry crossing at dusk.", None, 52, [0]),
+
+__all__ = [
+    "SEED_DRAFT_TITLE",
+    "SEED_DRAFT",
+    "SEED_PASSWORD",
+    "SEED_POSTS",
+    "SEED_STORIES",
+    "SEED_USERS",
+    "main",
 ]
 
 
@@ -91,6 +67,23 @@ def _png(rgb: tuple[int, int, int], w: int = 1200, h: int = 900) -> bytes:
     )
 
 
+def _clear_previous(db, users: dict[str, User], storage) -> None:
+    """Remove what an earlier run created so re-running never duplicates."""
+    ids = [u.id for u in users.values()]
+    for story in db.scalars(select(Story).where(Story.author_id.in_(ids))):
+        db.delete(story)
+    for post in db.scalars(select(Post).where(Post.author_id.in_(ids))):
+        db.delete(post)
+    db.flush()
+    for asset in db.scalars(select(MediaAsset).where(MediaAsset.owner_id.in_(ids))):
+        try:
+            storage.delete(asset.storage_key)
+        except Exception:  # noqa: BLE001 - a missing placeholder file is harmless
+            pass
+        db.delete(asset)
+    db.flush()
+
+
 def main() -> None:
     settings = get_settings()
     if settings.is_production:
@@ -104,7 +97,7 @@ def main() -> None:
     with get_session_factory()() as db:
         places = seed_places(db, urls)
         users: dict[str, User] = {}
-        for username, display, creator, location in SEED_USERS:
+        for username, display, creator, location, bio in SEED_USERS:
             user = db.scalar(select(User).where(User.username == username))
             if user is None:
                 user = User(
@@ -117,24 +110,22 @@ def main() -> None:
             user.profile.display_name = display
             user.profile.creator_type = creator
             user.profile.location = location
-            user.profile.bio = "[SEED DATA] Development placeholder account."
+            user.profile.bio = f"[SEED DATA] {bio}"
             users[username] = user
         db.flush()
+        _clear_previous(db, users, storage)
 
-        for post in db.scalars(
-            select(Post).where(Post.author_id.in_([u.id for u in users.values()]))
-        ):
-            db.delete(post)
-        db.flush()
-
+        tags = TagRepository(db)
         now = datetime.now(UTC)
-        for username, body, location, hours_ago, images in SEED_POSTS:
+        for username, body, location, place_slug, hours_ago, images, tag_names in SEED_POSTS:
             stamp = now - timedelta(hours=hours_ago)
             db.add(
                 Post(
                     author_id=users[username].id,
                     body=body,
                     location_text=location,
+                    place_id=places[place_slug].id if place_slug else None,
+                    tags=tags.get_or_create(tag_names),
                     created_at=stamp,
                     updated_at=stamp,
                     media=[
@@ -150,9 +141,59 @@ def main() -> None:
                     ],
                 )
             )
+
+        stories = StoryRepository(db)
+        for n, row in enumerate(SEED_STORIES):
+            username, title, location, place_slug, hours_ago, cover, tag_names, paragraphs = row
+            stamp = now - timedelta(hours=hours_ago)
+            key = f"seed/story-cover-{n}.png"
+            saved = storage.save(key, _png(WARM[cover]), "image/png")
+            asset = MediaAsset(
+                owner_id=users[username].id,
+                storage_key=key,
+                url=saved.url,
+                kind="image",
+                content_type="image/png",
+                size_bytes=0,
+                width=1200,
+                height=900,
+            )
+            db.add(asset)
+            db.flush()
+            db.add(
+                Story(
+                    author_id=users[username].id,
+                    title=title,
+                    slug=stories.new_slug(slugify(title)),
+                    content="\n\n".join([*paragraphs, STORY_DISCLAIMER]),
+                    cover_asset_id=asset.id,
+                    location_text=location,
+                    place_id=places[place_slug].id,
+                    tags=tags.get_or_create(tag_names),
+                    status="published",
+                    published_at=stamp,
+                    created_at=stamp,
+                    updated_at=stamp,
+                )
+            )
+
+        username, title, location, place_slug, tag_names, paragraphs = SEED_DRAFT
+        db.add(
+            Story(
+                author_id=users[username].id,
+                title=title,
+                slug=stories.new_slug(slugify(title)),
+                content="\n\n".join([*paragraphs, STORY_DISCLAIMER]),
+                location_text=location,
+                place_id=places[place_slug].id,
+                tags=tags.get_or_create(tag_names),
+                status="draft",
+            )
+        )
         db.commit()
     print(
-        f"Seeded {len(places)} places, {len(SEED_USERS)} users and {len(SEED_POSTS)} posts (SEED DATA)."
+        f"Seeded {len(places)} places, {len(SEED_USERS)} users, {len(SEED_POSTS)} posts "
+        f"and {len(SEED_STORIES)} stories (+1 draft) (SEED DATA)."
     )
     print(f"Log in as e.g. seed_rahim / {SEED_PASSWORD}")
 
