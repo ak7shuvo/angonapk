@@ -1,3 +1,4 @@
+import '../core/utils/unchanged.dart';
 import '../core/network/api_client.dart';
 import '../models/user.dart';
 
@@ -36,11 +37,15 @@ class AuthRepository {
     return AppUser.fromJson(json as Map<String, dynamic>);
   }
 
+  /// `avatarMediaId` / `coverMediaId`: an id from `POST /media`, `null` to remove
+  /// the image, or omitted to leave it unchanged.
   Future<AppUser> updateProfile({
     String? displayName,
     String? bio,
     String? location,
     CreatorType? creatorType,
+    Object? avatarMediaId = unchanged,
+    Object? coverMediaId = unchanged,
   }) async {
     final json = await _api.patch(
       '/users/me/profile',
@@ -49,6 +54,9 @@ class AuthRepository {
         'bio': ?bio,
         'location': ?location,
         'creator_type': ?creatorType?.apiValue,
+        if (!identical(avatarMediaId, unchanged))
+          'avatar_media_id': avatarMediaId,
+        if (!identical(coverMediaId, unchanged)) 'cover_media_id': coverMediaId,
       },
     );
     return AppUser.fromJson(json as Map<String, dynamic>);

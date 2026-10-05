@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile, status
 
 from app.api.deps import AppSettings, CurrentUser, Media
 from app.schemas.media import MediaAssetRead
@@ -11,16 +12,23 @@ router = APIRouter(prefix="/media", tags=["media"])
 
 @router.post("", response_model=MediaAssetRead, status_code=status.HTTP_201_CREATED)
 def upload_media(
-    file: UploadFile, request: Request, user: CurrentUser, media: Media, settings: AppSettings
+    file: UploadFile,
+    request: Request,
+    user: CurrentUser,
+    media: Media,
+    settings: AppSettings,
+    purpose: Annotated[Literal["image", "avatar"], Query()] = "image",
 ) -> MediaAssetRead:
-    """Upload one image (multipart field `file`). JPEG/PNG/WebP, validated by decoding."""
+    """Upload one image (multipart field `file`). JPEG/PNG/WebP, validated by decoding.
+
+    `purpose=avatar` crops to a centred 512×512 square."""
     limit = settings.max_upload_bytes
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > limit + 64 * 1024:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Image is too large")
     data = file.file.read(limit + 1)  # never buffer more than limit+1 bytes
     try:
-        return media.upload_image(user, data)
+        return media.upload_image(user, data, purpose)
     except MediaError as exc:
         raise HTTPException(exc.status_code, exc.message) from None
 

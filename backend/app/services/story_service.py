@@ -9,6 +9,7 @@ from app.models.story import STATUS_DRAFT, STATUS_PUBLISHED
 from app.repositories.story_repository import StoryRepository
 from app.repositories.tag_repository import TagRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.author import author_dict
 from app.schemas.story import (
     INLINE_IMAGE_RE,
     CoverRead,
@@ -340,7 +341,7 @@ class StoryService:
             published_at=story.published_at,
             updated_at=story.updated_at,
             reading_minutes=story.reading_minutes,
-            author=_author(story.author),
+            author=author_dict(story.author),
             like_count=likes,
             liked_by_me=liked,
             saved_by_me=saved,
@@ -353,11 +354,3 @@ class StoryService:
             content=story.content,
             media=[CoverRead.model_validate(m.asset) for m in story.media],
         )
-
-
-def _author(user: User) -> dict:
-    return {
-        "id": user.id,
-        "username": user.username,
-        "display_name": user.profile.display_name if user.profile else None,
-    }

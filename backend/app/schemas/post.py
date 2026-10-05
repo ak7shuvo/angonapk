@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.author import AuthorRead, author_dict
 from app.schemas.tags import normalize_tags
 
 MAX_BODY = 2000
@@ -70,14 +71,6 @@ class MediaRead(BaseModel):
     alt_text: str | None
 
 
-class AuthorRead(BaseModel):
-    """Public author summary embedded in posts. No email or private data."""
-
-    id: uuid.UUID
-    username: str
-    display_name: str | None
-
-
 class PostRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -106,14 +99,7 @@ class PostRead(BaseModel):
     @field_validator("author", mode="before")
     @classmethod
     def _author_summary(cls, user):
-        if isinstance(user, dict):
-            return user
-        profile = user.profile
-        return {
-            "id": user.id,
-            "username": user.username,
-            "display_name": profile.display_name if profile else None,
-        }
+        return user if isinstance(user, dict) else author_dict(user)
 
     @field_serializer("created_at", "updated_at")
     def _utc(self, v: datetime) -> str:

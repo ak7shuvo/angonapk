@@ -13,6 +13,9 @@ from app.storage.base import StorageBackend
 
 log = logging.getLogger(__name__)
 
+# Avatars are cropped to a centred square of this size.
+AVATAR_SIZE = 512
+
 # Detected format -> (content type, extension). Anything else is rejected.
 ALLOWED_FORMATS = {
     "JPEG": ("image/jpeg", "jpg"),
@@ -56,7 +59,7 @@ class ProcessedImage:
     height: int
 
 
-def process_image(data: bytes, settings: Settings) -> ProcessedImage:
+def process_image(data: bytes, settings: Settings, purpose: str = "image") -> ProcessedImage:
     """Validate by decoding (not by trusting the filename/content-type), then
     re-encode. Re-encoding drops EXIF (including GPS) and any appended payload."""
     if len(data) > settings.max_upload_bytes:
@@ -78,7 +81,10 @@ def process_image(data: bytes, settings: Settings) -> ProcessedImage:
         raise UnsupportedMediaError("File is not a valid image") from None
 
     img = ImageOps.exif_transpose(img)
-    img.thumbnail((settings.max_image_edge, settings.max_image_edge))
+    if purpose == "avatar":
+        img = ImageOps.fit(img, (AVATAR_SIZE, AVATAR_SIZE))  # centred square crop
+    else:
+        img.thumbnail((settings.max_image_edge, settings.max_image_edge))
     content_type, ext = ALLOWED_FORMATS[fmt]
     out = io.BytesIO()
     if fmt == "JPEG":
@@ -96,8 +102,8 @@ class MediaService:
         self.storage = storage
         self.settings = settings
 
-    def upload_image(self, owner: User, data: bytes) -> MediaAsset:
-        image = process_image(data, self.settings)
+    def upload_image(self, owner: User, data: bytes, purpose: str = "image") -> MediaAsset:
+        image = process_image(data, self.settings, purpose)
         key = f"u/{owner.id.hex}/{uuid.uuid4().hex}.{image.extension}"
         stored = self.storage.save(key, image.data, image.content_type)
         asset = MediaAsset(

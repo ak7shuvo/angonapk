@@ -2,14 +2,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import AuthSvc, CurrentUser, Posts, Social, Stories
+from app.api.deps import CurrentUser, Posts, Profiles, Social, Stories
 from app.core.pagination import InvalidCursorError
 from app.schemas.post import FeedPage
-from app.schemas.profile import ProfileUpdate
+from app.schemas.profile import ProfileUpdate, PublicProfile
 from app.schemas.social import FollowState, UserPage
 from app.schemas.story import StoryPage
 from app.schemas.user import UserRead
 from app.services.post_service import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.services.profile_service import ProfileError
 from app.services.social_service import SelfFollowError, UserMissingError
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -25,8 +26,11 @@ def read_me(user: CurrentUser) -> UserRead:
 
 
 @router.patch("/me/profile", response_model=UserRead)
-def update_my_profile(data: ProfileUpdate, user: CurrentUser, auth: AuthSvc) -> UserRead:
-    return auth.update_profile(user, data)
+def update_my_profile(data: ProfileUpdate, user: CurrentUser, profiles: Profiles) -> UserRead:
+    try:
+        return profiles.update(user, data)
+    except ProfileError as exc:
+        raise HTTPException(exc.status_code, exc.message) from None
 
 
 @router.get("/me/saved/posts", response_model=FeedPage)
@@ -54,6 +58,34 @@ def my_saved_stories(
     except InvalidCursorError:
         raise HTTPException(422, "Invalid cursor") from None
     return StoryPage(items=stories.summaries(items, user), next_cursor=next_cursor)
+
+
+@router.get("/{username}", response_model=PublicProfile)
+def public_profile(username: str, user: CurrentUser, profiles: Profiles) -> PublicProfile:
+    try:
+        return profiles.public(user, username)
+    except ProfileError as exc:
+        raise HTTPException(exc.status_code, exc.message) from None
+
+
+@router.get("/{username}/posts", response_model=FeedPage)
+def user_posts(
+    username: str,
+    user: CurrentUser,
+    profiles: Profiles,
+    posts: Posts,
+    limit: Limit = DEFAULT_PAGE_SIZE,
+    cursor: Cursor = None,
+) -> FeedPage:
+    """A user's posts, newest first."""
+    try:
+        author = profiles.author(username)
+        items, next_cursor = posts.feed(limit=limit, cursor=cursor, author_id=author.id)
+    except ProfileError as exc:
+        raise HTTPException(exc.status_code, exc.message) from None
+    except InvalidCursorError:
+        raise HTTPException(422, "Invalid cursor") from None
+    return FeedPage(items=posts.present(items, user), next_cursor=next_cursor)
 
 
 @router.put("/{username}/follow", response_model=FollowState)

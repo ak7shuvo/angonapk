@@ -77,10 +77,17 @@ class PostService:
         self.media.release(assets)  # remove stored files nothing references any more
 
     def feed(
-        self, *, limit: int, cursor: str | None, following_of: uuid.UUID | None = None
+        self,
+        *,
+        limit: int,
+        cursor: str | None,
+        following_of: uuid.UUID | None = None,
+        author_id: uuid.UUID | None = None,
     ) -> tuple[list[Post], str | None]:
         before = decode_cursor(cursor) if cursor else None
-        rows = self.repo.feed(limit=limit + 1, before=before, following_of=following_of)
+        rows = self.repo.feed(
+            limit=limit + 1, before=before, following_of=following_of, author_id=author_id
+        )
         page = rows[:limit]
         next_cursor = encode_cursor(page[-1].created_at, page[-1].id) if len(rows) > limit else None
         return page, next_cursor

@@ -107,3 +107,19 @@ def get_story_service(db: DbSession, media: Media) -> StoryService:
 
 
 Stories = Annotated[StoryService, Depends(get_story_service)]
+
+
+from app.services.profile_service import ProfileService  # noqa: E402
+
+
+def get_profile_service(db: DbSession, media: Media) -> ProfileService:
+    return ProfileService(
+        UserRepository(db),
+        media,
+        SocialRepository(db),
+        PostRepository(db),
+        StoryRepository(db),
+    )
+
+
+Profiles = Annotated[ProfileService, Depends(get_profile_service)]

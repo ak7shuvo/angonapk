@@ -39,6 +39,8 @@ class PostTile extends ConsumerWidget {
 void openProfile(BuildContext context, String username, {required bool isMe}) {
   if (isMe) {
     context.go(AppRoutes.profile);
+  } else {
+    context.push(AppRoutes.userPath(username));
   }
 }
 

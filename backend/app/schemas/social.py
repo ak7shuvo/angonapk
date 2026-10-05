@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
-from app.schemas.post import AuthorRead
+from app.schemas.author import AuthorRead, author_dict
 
 
 class LikeState(BaseModel):
@@ -47,13 +47,7 @@ class CommentRead(BaseModel):
     @field_validator("author", mode="before")
     @classmethod
     def _author(cls, user):
-        if isinstance(user, dict):
-            return user
-        return {
-            "id": user.id,
-            "username": user.username,
-            "display_name": user.profile.display_name if user.profile else None,
-        }
+        return user if isinstance(user, dict) else author_dict(user)
 
     @field_serializer("created_at")
     def _utc(self, v: datetime) -> str:
@@ -71,6 +65,7 @@ class UserSummary(BaseModel):
     id: uuid.UUID
     username: str
     display_name: str | None
+    avatar_url: str | None = None
     creator_type: str | None
     is_following: bool
     is_me: bool

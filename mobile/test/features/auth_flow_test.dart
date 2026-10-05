@@ -191,7 +191,9 @@ void main() {
       await boot(tester);
 
       await tapText(tester, 'PROFILE');
-      expect(find.text('@rahim_bd'), findsOneWidget);
+      expect(find.text('@rahim_bd'), findsWidgets);
+      await tester.tap(find.byTooltip('Account menu'));
+      await tester.pumpAndSettle();
       await tapText(tester, 'Sign out');
 
       expect(find.text('Create account'), findsOneWidget);

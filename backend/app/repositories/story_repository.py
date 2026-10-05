@@ -22,6 +22,16 @@ class StoryRepository:
             self.db.execute(select(Story).where(Story.slug == slug)).unique().scalar_one_or_none()
         )
 
+    def published_count(self, author_id: uuid.UUID) -> int:
+        return (
+            self.db.scalar(
+                select(func.count()).where(
+                    Story.author_id == author_id, Story.status == STATUS_PUBLISHED
+                )
+            )
+            or 0
+        )
+
     def slug_exists(self, slug: str) -> bool:
         return self.db.scalar(select(Story.id).where(Story.slug == slug)) is not None
 

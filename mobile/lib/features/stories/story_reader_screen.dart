@@ -246,6 +246,7 @@ class _ReaderState extends ConsumerState<_Reader> {
                                   UserAvatar(
                                     name: story.author.name,
                                     seed: story.author.username,
+                                    imageUrl: story.author.avatarUrl,
                                     size: 36,
                                   ),
                                   const SizedBox(width: AppSpacing.md - 4),
@@ -446,6 +447,7 @@ class _AuthorCard extends StatelessWidget {
           UserAvatar(
             name: story.author.name,
             seed: story.author.username,
+            imageUrl: story.author.avatarUrl,
             size: 48,
           ),
           const SizedBox(width: AppSpacing.md),

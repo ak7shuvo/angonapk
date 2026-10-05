@@ -291,12 +291,12 @@ void main() {
       await bootHome(tester);
       await tester.tap(find.byTooltip('Your profile'));
       await tester.pumpAndSettle();
-      expect(find.text('@rahim_bd'), findsOneWidget);
-      expect(find.text('Sign out'), findsOneWidget);
+      expect(find.text('@rahim_bd'), findsWidgets);
+      expect(find.text('Edit profile'), findsWidgets);
     });
 
     testWidgets(
-      'tapping your own post author opens your profile; others do nothing',
+      'tapping an author opens their profile; your own opens the Profile tab',
       (tester) async {
         final me =
             (backend..seedUser('rahim_bd', 'pw-12345678')).users['rahim_bd']!;
@@ -319,13 +319,17 @@ void main() {
               displayName: 'Someone',
             ),
           );
+        backend.seedUser('someone', 'pw-12345678');
         await bootHome(tester);
         await tester.tap(find.text('Someone'));
         await tester.pumpAndSettle();
-        expect(find.text('their post'), findsOneWidget); // still on Home
+        expect(find.text('@someone'), findsWidgets); // their profile, pushed
+        expect(find.widgetWithText(FilledButton, 'Follow'), findsWidgets);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Rahim').first);
         await tester.pumpAndSettle();
-        expect(find.text('Sign out'), findsOneWidget);
+        expect(find.text('Edit profile'), findsWidgets); // my own profile tab
       },
     );
 

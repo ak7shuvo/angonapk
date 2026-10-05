@@ -62,7 +62,10 @@ final imagePickerProvider = Provider<ImagePickerService>(
 final draftStoreProvider = Provider<DraftStore>((_) => PrefsDraftStore());
 
 final userRepositoryProvider = Provider<UserRepository>(
-  (ref) => UserRepository(ref.watch(apiClientProvider)),
+  (ref) => UserRepository(
+    ref.watch(apiClientProvider),
+    mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
+  ),
 );
 
 final storyRepositoryProvider = Provider<StoryRepository>(

@@ -1,3 +1,5 @@
+import '../../core/utils/unchanged.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -90,6 +92,8 @@ class AuthController extends Notifier<AuthState> {
     String? bio,
     String? location,
     CreatorType? creatorType,
+    Object? avatarMediaId = unchanged,
+    Object? coverMediaId = unchanged,
   }) async {
     final user = await ref
         .read(authRepositoryProvider)
@@ -98,6 +102,8 @@ class AuthController extends Notifier<AuthState> {
           bio: bio,
           location: location,
           creatorType: creatorType,
+          avatarMediaId: avatarMediaId,
+          coverMediaId: coverMediaId,
         );
     state = Authenticated(user);
   }

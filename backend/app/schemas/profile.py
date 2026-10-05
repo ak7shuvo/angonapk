@@ -1,6 +1,8 @@
+import uuid
+from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class CreatorType(StrEnum):
@@ -23,6 +25,8 @@ class ProfileRead(BaseModel):
     bio: str | None
     location: str | None
     creator_type: CreatorType | None
+    avatar_url: str | None
+    cover_url: str | None
     is_complete: bool
 
 
@@ -35,6 +39,9 @@ class ProfileUpdate(BaseModel):
     bio: str | None = Field(default=None, max_length=500)
     location: str | None = Field(default=None, max_length=120)
     creator_type: CreatorType | None = None
+    # Ids from POST /media. Send null to remove the image.
+    avatar_media_id: uuid.UUID | None = None
+    cover_media_id: uuid.UUID | None = None
 
     @field_validator("display_name", "bio", "location")
     @classmethod
@@ -43,3 +50,32 @@ class ProfileUpdate(BaseModel):
             return None
         v = v.strip()
         return v or None
+
+
+class ProfileCounts(BaseModel):
+    posts: int
+    stories: int
+    followers: int
+    following: int
+    places: int
+
+
+class PublicProfile(BaseModel):
+    """What anyone can see about a user (no email)."""
+
+    id: uuid.UUID
+    username: str
+    display_name: str | None
+    bio: str | None
+    location: str | None
+    creator_type: CreatorType | None
+    avatar_url: str | None
+    cover_url: str | None
+    joined_at: datetime
+    counts: ProfileCounts
+    is_following: bool
+    is_me: bool
+
+    @field_serializer("joined_at")
+    def _utc(self, v: datetime) -> str:
+        return (v if v.tzinfo else v.replace(tzinfo=UTC)).astimezone(UTC).isoformat()

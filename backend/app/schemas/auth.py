@@ -6,6 +6,24 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.schemas.user import UserRead
 
 USERNAME_RE = re.compile(r"^[a-z0-9_]{3,30}$")
+# Names that would impersonate the platform or collide with routes.
+RESERVED_USERNAMES = frozenset(
+    {
+        "admin",
+        "administrator",
+        "angon",
+        "api",
+        "support",
+        "system",
+        "root",
+        "moderator",
+        "staff",
+        "null",
+        "undefined",
+        "help",
+        "official",
+    }
+)
 
 
 class RegisterRequest(BaseModel):
@@ -24,6 +42,8 @@ class RegisterRequest(BaseModel):
         v = v.strip().lower()
         if not USERNAME_RE.fullmatch(v):
             raise ValueError("username may only contain letters, digits and underscores (3-30)")
+        if v in RESERVED_USERNAMES:
+            raise ValueError("this username is reserved")
         return v
 
 

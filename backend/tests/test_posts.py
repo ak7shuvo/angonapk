@@ -38,6 +38,7 @@ def test_create_text_post(client, alice):
         "id": alice["user"]["id"],
         "username": "alice_bd",
         "display_name": None,
+        "avatar_url": None,
     }
     assert "email" not in post["author"]
     assert post["created_at"].endswith("+00:00")

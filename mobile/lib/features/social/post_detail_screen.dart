@@ -280,6 +280,7 @@ class _CommentTile extends StatelessWidget {
           UserAvatar(
             name: comment.author.name,
             seed: comment.author.username,
+            imageUrl: comment.author.avatarUrl,
             size: 32,
           ),
           const SizedBox(width: AppSpacing.md - 4),

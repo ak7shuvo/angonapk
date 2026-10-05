@@ -14,7 +14,6 @@ from app.core.security import (
 from app.models import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import LoginRequest, RegisterRequest
-from app.schemas.profile import ProfileUpdate
 
 
 class DuplicateAccountError(Exception):
@@ -83,8 +82,3 @@ class AuthService:
     def logout(self, token: str) -> None:
         payload = decode_access_token(token, self.settings)
         self.repo.revoke_token(payload["jti"], datetime.fromtimestamp(payload["exp"], UTC))
-
-    def update_profile(self, user: User, data: ProfileUpdate) -> User:
-        for field, value in data.model_dump(exclude_unset=True).items():
-            setattr(user.profile, field, value)
-        return self.repo.save(user)

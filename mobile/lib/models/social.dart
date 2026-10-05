@@ -105,6 +105,7 @@ class UserSummary {
     required this.username,
     this.displayName,
     this.creatorType,
+    this.avatarUrl,
     this.isFollowing = false,
     this.isMe = false,
   });
@@ -113,6 +114,7 @@ class UserSummary {
   final String username;
   final String? displayName;
   final String? creatorType;
+  final String? avatarUrl;
   final bool isFollowing;
   final bool isMe;
 
@@ -125,6 +127,7 @@ class UserSummary {
     username: json['username'] as String,
     displayName: json['display_name'] as String?,
     creatorType: json['creator_type'] as String?,
+    avatarUrl: json['avatar_url'] as String?,
     isFollowing: json['is_following'] as bool? ?? false,
     isMe: json['is_me'] as bool? ?? false,
   );

@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
-from app.schemas.post import AuthorRead
+from app.schemas.author import AuthorRead
 from app.schemas.tags import normalize_tags
 
 MAX_CONTENT = 50_000

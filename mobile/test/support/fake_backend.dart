@@ -108,6 +108,9 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  /// Body of the most recent PATCH /users/me/profile (to assert what was sent).
+  Map<String, dynamic>? lastProfilePatch;
+
   // Social state, keyed by post id / username.
   final likes = <String, Set<String>>{};
   final saves = <String, List<String>>{}; // post id -> usernames (save order)
@@ -320,6 +323,63 @@ class FakeBackend implements ApiClient {
       final result = _handleStories(method, path, data, query, viewer);
       return result;
     }
+    if (path == '/users/me/saved/posts') {
+      final viewer = requireUser();
+      return _page([
+        for (final p in feed)
+          if (saves[p['id']]?.contains(viewer) ?? false) decorate(p, viewer),
+      ], query);
+    }
+    final userPosts = RegExp(r'^/users/([^/]+)/posts$').firstMatch(path);
+    if (userPosts != null && method == 'GET') {
+      final viewer = requireUser();
+      final target = userPosts.group(1)!;
+      if (!users.containsKey(target)) {
+        throw const NotFoundException('User not found');
+      }
+      return _page([
+        for (final p in feed)
+          if ((p['author'] as Map)['username'] == target) decorate(p, viewer),
+      ], query);
+    }
+    final publicProfile = RegExp(r'^/users/([^/]+)$').firstMatch(path);
+    if (publicProfile != null &&
+        method == 'GET' &&
+        publicProfile.group(1) != 'me') {
+      final viewer = requireUser();
+      final target = publicProfile.group(1)!;
+      final u = users[target];
+      if (u == null) throw const NotFoundException('User not found');
+      final profile = u['profile'] as Map;
+      return {
+        'id': u['id'],
+        'username': target,
+        'display_name': profile['display_name'],
+        'bio': profile['bio'],
+        'location': profile['location'],
+        'creator_type': profile['creator_type'],
+        'avatar_url': profile['avatar_url'],
+        'cover_url': profile['cover_url'],
+        'joined_at': '2026-01-01T00:00:00+00:00',
+        'counts': {
+          'posts': feed
+              .where((p) => (p['author'] as Map)['username'] == target)
+              .length,
+          'stories': stories
+              .where(
+                (s) =>
+                    (s['author'] as Map)['username'] == target &&
+                    s['status'] == 'published',
+              )
+              .length,
+          'followers': follows.values.where((f) => f.contains(target)).length,
+          'following': follows[target]?.length ?? 0,
+          'places': 0,
+        },
+        'is_following': follows[viewer]?.contains(target) ?? false,
+        'is_me': target == viewer,
+      };
+    }
     final single = RegExp(r'^/posts/([^/]+)$').firstMatch(path);
     if (single != null && method == 'GET') {
       final viewer = requireUser();
@@ -411,7 +471,21 @@ class FakeBackend implements ApiClient {
       case 'PATCH /users/me/profile':
         final username = requireUser();
         final profile = users[username]!['profile'] as Map<String, dynamic>;
-        profile.addAll(data!);
+        for (final e in data!.entries) {
+          switch (e.key) {
+            case 'avatar_media_id':
+              profile['avatar_url'] = e.value == null
+                  ? null
+                  : '/media/u/${e.value}.png';
+            case 'cover_media_id':
+              profile['cover_url'] = e.value == null
+                  ? null
+                  : '/media/u/${e.value}.png';
+            default:
+              profile[e.key] = e.value;
+          }
+        }
+        lastProfilePatch = Map.of(data);
         profile['is_complete'] =
             (profile['display_name'] as String?)?.isNotEmpty == true &&
             profile['creator_type'] != null;

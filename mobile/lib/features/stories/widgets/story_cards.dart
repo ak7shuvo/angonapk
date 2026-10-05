@@ -120,6 +120,7 @@ class StoryCard extends ConsumerWidget {
               UserAvatar(
                 name: story.author.name,
                 seed: story.author.username,
+                imageUrl: story.author.avatarUrl,
                 size: 22,
               ),
               const SizedBox(width: AppSpacing.sm),

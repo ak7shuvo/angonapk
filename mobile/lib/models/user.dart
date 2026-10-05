@@ -29,6 +29,8 @@ class Profile {
     this.bio,
     this.location,
     this.creatorType,
+    this.avatarUrl,
+    this.coverUrl,
     required this.isComplete,
   });
 
@@ -36,6 +38,10 @@ class Profile {
   final String? bio;
   final String? location;
   final CreatorType? creatorType;
+
+  /// Raw API values; storage-relative paths are resolved at display time.
+  final String? avatarUrl;
+  final String? coverUrl;
 
   /// Computed by the server; drives the profile-setup redirect.
   final bool isComplete;
@@ -45,6 +51,8 @@ class Profile {
     bio: json['bio'] as String?,
     location: json['location'] as String?,
     creatorType: CreatorType.fromApi(json['creator_type'] as String?),
+    avatarUrl: json['avatar_url'] as String?,
+    coverUrl: json['cover_url'] as String?,
     isComplete: json['is_complete'] as bool,
   );
 }

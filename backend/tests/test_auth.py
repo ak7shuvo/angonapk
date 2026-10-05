@@ -42,6 +42,8 @@ def test_register_creates_user_with_empty_profile(client):
         "bio": None,
         "location": None,
         "creator_type": None,
+        "avatar_url": None,
+        "cover_url": None,
         "is_complete": False,
     }
 

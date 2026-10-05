@@ -171,7 +171,11 @@ class UserTile extends StatelessWidget {
         horizontal: AppSpacing.gutter,
         vertical: 2,
       ),
-      leading: UserAvatar(name: user.name, seed: user.username),
+      leading: UserAvatar(
+        name: user.name,
+        seed: user.username,
+        imageUrl: user.avatarUrl,
+      ),
       title: Text(
         user.name,
         style: theme.textTheme.titleSmall,

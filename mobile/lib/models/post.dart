@@ -46,11 +46,15 @@ class PostAuthor {
     required this.id,
     required this.username,
     this.displayName,
+    this.avatarUrl,
   });
 
   final String id;
   final String username;
   final String? displayName;
+
+  /// Raw API value (may be storage-relative); `UserAvatar` resolves it.
+  final String? avatarUrl;
 
   String get name => (displayName != null && displayName!.trim().isNotEmpty)
       ? displayName!
@@ -60,6 +64,7 @@ class PostAuthor {
     id: json['id'] as String,
     username: json['username'] as String,
     displayName: json['display_name'] as String?,
+    avatarUrl: json['avatar_url'] as String?,
   );
 }
 

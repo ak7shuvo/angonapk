@@ -159,6 +159,7 @@ def user_summary(user: User, *, is_following: bool, is_me: bool) -> UserSummary:
         id=user.id,
         username=user.username,
         display_name=profile.display_name if profile else None,
+        avatar_url=profile.avatar_url if profile else None,
         creator_type=profile.creator_type if profile else None,
         is_following=is_following,
         is_me=is_me,

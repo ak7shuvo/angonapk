@@ -125,7 +125,11 @@ class _Header extends ConsumerWidget {
     );
     final who = Row(
       children: [
-        UserAvatar(name: author.name, seed: author.username),
+        UserAvatar(
+          name: author.name,
+          seed: author.username,
+          imageUrl: author.avatarUrl,
+        ),
         const SizedBox(width: AppSpacing.md - 4),
         Expanded(
           child: Column(

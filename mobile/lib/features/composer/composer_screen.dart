@@ -129,7 +129,11 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             if (me != null)
               Row(
                 children: [
-                  UserAvatar(name: me.displayName, seed: me.username),
+                  UserAvatar(
+                    name: me.displayName,
+                    seed: me.username,
+                    imageUrl: me.profile.avatarUrl,
+                  ),
                   const SizedBox(width: AppSpacing.md - 4),
                   Text(me.displayName, style: theme.textTheme.titleSmall),
                 ],

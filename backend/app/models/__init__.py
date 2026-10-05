@@ -11,7 +11,13 @@ from app.models.user import User
 
 # Columns that reference a MediaAsset. An asset referenced by none of them is
 # "unattached" (freshly uploaded or orphaned) and may be deleted/cleaned up.
-ASSET_REFERENCES = [PostMedia.asset_id, StoryMedia.asset_id, Story.cover_asset_id]
+ASSET_REFERENCES = [
+    PostMedia.asset_id,
+    StoryMedia.asset_id,
+    Story.cover_asset_id,
+    Profile.avatar_asset_id,
+    Profile.cover_asset_id,
+]
 
 __all__ = [
     "ASSET_REFERENCES",

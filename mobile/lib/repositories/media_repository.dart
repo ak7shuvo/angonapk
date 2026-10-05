@@ -13,9 +13,10 @@ class MediaRepository {
     required String filename,
     required String contentType,
     void Function(double progress)? onProgress,
+    String purpose = 'image',
   }) async {
     final json = await _api.upload(
-      '/media',
+      purpose == 'image' ? '/media' : '/media?purpose=$purpose',
       bytes: bytes,
       filename: filename,
       contentType: contentType,

@@ -74,6 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         icon: UserAvatar(
                           name: me.displayName,
                           seed: me.username,
+                          imageUrl: me.profile.avatarUrl,
                           size: 32,
                         ),
                       ),
