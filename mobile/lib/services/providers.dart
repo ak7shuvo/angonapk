@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/app_config.dart';
+import '../core/maps/map_provider.dart';
+import '../core/maps/osm_map_adapter.dart';
 import '../core/network/api_client.dart';
 import '../features/auth/auth_controller.dart';
 import '../repositories/auth_repository.dart';
@@ -90,3 +92,16 @@ final exploreRepositoryProvider = Provider<ExploreRepository>(
     mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
   ),
 );
+
+/// The map implementation, chosen by `MAP_PROVIDER`. Null means "no map": the
+/// Map screen then shows places as a list.
+final mapAdapterProvider = Provider<MapProviderAdapter?>((ref) {
+  final config = ref.watch(appConfigProvider);
+  return switch (config.mapProvider) {
+    MapProviderKind.osm => OsmMapAdapter(
+      tileUrl: config.mapTileUrl,
+      attribution: config.mapAttribution,
+    ),
+    MapProviderKind.none => null,
+  };
+});

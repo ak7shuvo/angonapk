@@ -21,6 +21,7 @@ import '../features/explore/category_screen.dart';
 import '../features/explore/explore_screen.dart';
 import '../features/explore/search_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/map/map_screen.dart';
 import '../features/places/place_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -75,6 +76,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           username: state.pathParameters['username']!,
           kind: UserListKind.following,
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.map,
+        builder: (_, state) =>
+            MapScreen(placeSlug: state.uri.queryParameters['place']),
       ),
       GoRoute(path: AppRoutes.search, builder: (_, _) => const SearchScreen()),
       GoRoute(

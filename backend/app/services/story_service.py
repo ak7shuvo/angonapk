@@ -250,6 +250,7 @@ class StoryService:
         author: str | None = None,
         tag: str | None = None,
         place_id: uuid.UUID | None = None,
+        place_ids: list[uuid.UUID] | None = None,
     ) -> tuple[list[Story], str | None]:
         author_id = None
         if author:
@@ -259,7 +260,12 @@ class StoryService:
             author_id = owner.id
         before = decode_cursor(cursor) if cursor else None
         rows = self.repo.published_page(
-            limit=limit + 1, before=before, author_id=author_id, tag=tag, place_id=place_id
+            limit=limit + 1,
+            before=before,
+            author_id=author_id,
+            tag=tag,
+            place_id=place_id,
+            place_ids=place_ids,
         )
         page = rows[:limit]
         nxt = encode_cursor(page[-1].published_at, page[-1].id) if len(rows) > limit else None

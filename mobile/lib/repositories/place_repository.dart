@@ -1,4 +1,5 @@
 import '../core/network/api_client.dart';
+import '../models/nearby.dart';
 import '../models/place.dart';
 import '../models/post.dart';
 import '../models/social.dart';
@@ -46,6 +47,19 @@ class PlaceRepository {
     );
     return PlaceList.fromJson(json as Map<String, dynamic>);
   }
+
+  /// Places within [radiusKm] of a point (nearest first) with the latest content about them.
+  Future<NearbyData> nearby(
+    double lat,
+    double lng, {
+    double radiusKm = 25,
+  }) async => NearbyData.fromJson(
+    await _api.get(
+      '/map/nearby',
+      query: {'lat': '$lat', 'lng': '$lng', 'radius_km': '$radiusKm'},
+    ) as Map<String, dynamic>,
+    mediaBaseUrl: mediaBaseUrl,
+  );
 
   Future<PlaceDetail> get(String slug) async => PlaceDetail.fromJson(
     await _api.get('/places/$slug') as Map<String, dynamic>,

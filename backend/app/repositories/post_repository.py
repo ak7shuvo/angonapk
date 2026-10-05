@@ -64,6 +64,7 @@ class PostRepository:
         author_id: uuid.UUID | None = None,
         place_id: uuid.UUID | None = None,
         tag: str | None = None,
+        place_ids: list[uuid.UUID] | None = None,
     ) -> list[Post]:
         """Newest-first keyset page. Fetches `limit` rows; callers pass limit+1 to detect more."""
         stmt = select(Post).order_by(Post.created_at.desc(), Post.id.desc()).limit(limit)
@@ -71,6 +72,8 @@ class PostRepository:
             stmt = stmt.where(Post.author_id == author_id)
         if place_id is not None:
             stmt = stmt.where(Post.place_id == place_id)
+        if place_ids is not None:
+            stmt = stmt.where(Post.place_id.in_(place_ids))
         if tag is not None:
             stmt = stmt.where(
                 Post.id.in_(

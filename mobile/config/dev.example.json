@@ -1,0 +1,7 @@
+{
+  "APP_ENV": "development",
+  "API_BASE_URL": "http://10.0.2.2:8000",
+  "MAP_PROVIDER": "osm",
+  "MAP_TILE_URL": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "MAP_ATTRIBUTION": "© OpenStreetMap contributors"
+}

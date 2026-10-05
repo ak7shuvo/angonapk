@@ -67,6 +67,7 @@ class StoryRepository:
         author_id: uuid.UUID | None = None,
         tag: str | None = None,
         place_id: uuid.UUID | None = None,
+        place_ids: list[uuid.UUID] | None = None,
     ) -> list[Story]:
         stmt = (
             select(Story)
@@ -78,6 +79,8 @@ class StoryRepository:
             stmt = stmt.where(Story.author_id == author_id)
         if place_id is not None:
             stmt = stmt.where(Story.place_id == place_id)
+        if place_ids is not None:
+            stmt = stmt.where(Story.place_id.in_(place_ids))
         if tag is not None:
             stmt = stmt.where(
                 Story.id.in_(

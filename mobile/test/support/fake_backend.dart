@@ -323,6 +323,21 @@ class FakeBackend implements ApiClient {
           ], query);
       }
     }
+    if (path == '/map/nearby') {
+      final viewer = requireUser();
+      return {
+        'places': [for (final p in places) placeSummary(p)],
+        'posts': [
+          for (final p in feed)
+            if (p['place'] != null) decorate(p, viewer),
+        ],
+        'stories': [
+          for (final s in stories)
+            if (s['status'] == 'published' && s['place'] != null)
+              _summaryOf(decorateStory(s, viewer)),
+        ],
+      };
+    }
     if (path == '/explore') {
       final viewer = requireUser();
       return _explore(viewer);
