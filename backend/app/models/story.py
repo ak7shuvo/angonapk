@@ -20,6 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.media import MediaAsset
+from app.models.place import Place
 from app.models.tag import Tag
 from app.models.user import User
 
@@ -63,8 +64,9 @@ class Story(Base):
         Uuid, ForeignKey("media_assets.id", ondelete="SET NULL"), index=True
     )
     location_text: Mapped[str | None] = mapped_column(String(120))
-    # Reserved for the Place system (FK added with the places table).
-    place_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    place_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("places.id", ondelete="SET NULL"), index=True
+    )
     status: Mapped[str] = mapped_column(String(16), default=STATUS_DRAFT)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -74,6 +76,7 @@ class Story(Base):
 
     author: Mapped[User] = relationship(lazy="joined")
     cover_asset: Mapped[MediaAsset | None] = relationship(lazy="joined")
+    place: Mapped[Place | None] = relationship(lazy="joined")
     tags: Mapped[list[Tag]] = relationship(secondary=story_tags, order_by=Tag.name, lazy="selectin")
     media: Mapped[list[StoryMedia]] = relationship(
         back_populates="story",

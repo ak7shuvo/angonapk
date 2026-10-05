@@ -10,3 +10,4 @@ testpaths = ["tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/**" = ["E501"]
+"scripts/**" = ["E501"]

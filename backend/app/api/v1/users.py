@@ -2,8 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.deps import CurrentUser, Posts, Profiles, Social, Stories
+from app.api.deps import CurrentUser, Places, Posts, Profiles, Social, Stories
 from app.core.pagination import InvalidCursorError
+from app.schemas.place import PlaceSummary
 from app.schemas.post import FeedPage
 from app.schemas.profile import ProfileUpdate, PublicProfile
 from app.schemas.social import FollowState, UserPage
@@ -86,6 +87,18 @@ def user_posts(
     except InvalidCursorError:
         raise HTTPException(422, "Invalid cursor") from None
     return FeedPage(items=posts.present(items, user), next_cursor=next_cursor)
+
+
+@router.get("/{username}/places", response_model=list[PlaceSummary])
+def user_places(
+    username: str, _user: CurrentUser, profiles: Profiles, places: Places
+) -> list[PlaceSummary]:
+    """Places this person has documented (posts or published stories)."""
+    try:
+        author = profiles.author(username)
+    except ProfileError as exc:
+        raise HTTPException(exc.status_code, exc.message) from None
+    return places.documented_by(author)
 
 
 @router.put("/{username}/follow", response_model=FollowState)

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.media import MediaAsset
+from app.models.place import Place
 from app.models.tag import Tag, post_tags
 
 if TYPE_CHECKING:
@@ -35,15 +36,16 @@ class Post(Base):
     body: Mapped[str | None] = mapped_column(Text)
     # Free-text location as typed by the author ("Jaflong, Sylhet").
     location_text: Mapped[str | None] = mapped_column(String(120))
-    # Reserved for the Place system (Phase 09). Deliberately has no foreign key
-    # yet because the `places` table does not exist; the FK is added then.
-    place_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    place_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("places.id", ondelete="SET NULL"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, onupdate=_now
     )
 
     author: Mapped[User] = relationship(lazy="joined")
+    place: Mapped[Place | None] = relationship(lazy="joined")
     tags: Mapped[list[Tag]] = relationship(secondary=post_tags, order_by=Tag.name, lazy="selectin")
     media: Mapped[list[PostMedia]] = relationship(
         back_populates="post",

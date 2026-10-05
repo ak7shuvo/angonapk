@@ -66,6 +66,7 @@ class StoryRepository:
         before: tuple[datetime, uuid.UUID] | None,
         author_id: uuid.UUID | None = None,
         tag: str | None = None,
+        place_id: uuid.UUID | None = None,
     ) -> list[Story]:
         stmt = (
             select(Story)
@@ -75,6 +76,8 @@ class StoryRepository:
         )
         if author_id is not None:
             stmt = stmt.where(Story.author_id == author_id)
+        if place_id is not None:
+            stmt = stmt.where(Story.place_id == place_id)
         if tag is not None:
             stmt = stmt.where(
                 Story.id.in_(

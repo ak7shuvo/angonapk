@@ -1,15 +1,17 @@
 import re
-import unicodedata
 import uuid
 from datetime import UTC, datetime
 
 from app.core.pagination import decode_cursor, encode_cursor
+from app.core.text import slugify
 from app.models import MediaAsset, Story, StoryMedia, User
 from app.models.story import STATUS_DRAFT, STATUS_PUBLISHED
+from app.repositories.place_repository import PlaceRepository
 from app.repositories.story_repository import StoryRepository
 from app.repositories.tag_repository import TagRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.author import author_dict
+from app.schemas.place import PlaceBrief
 from app.schemas.story import (
     INLINE_IMAGE_RE,
     CoverRead,
@@ -40,19 +42,6 @@ class StoryForbiddenError(StoryError):
 
 class StoryInvalidError(StoryError):
     status_code = 422
-
-
-def slugify(title: str) -> str:
-    """Unicode-aware slug: keeps Bengali letters (and their vowel signs)."""
-    text = unicodedata.normalize("NFC", title).lower()
-    out = []
-    for ch in text:
-        if ch.isalnum() or unicodedata.category(ch).startswith("M"):
-            out.append(ch)
-        elif out and out[-1] != "-":
-            out.append("-")
-    slug = "".join(out).strip("-")[:60].strip("-")
-    return slug or "story"
 
 
 def make_summary(content: str, limit: int = 220) -> str:
@@ -90,11 +79,13 @@ class StoryService:
         tags: TagRepository,
         media: MediaService,
         users: UserRepository,
+        places: PlaceRepository,
     ) -> None:
         self.repo = repo
         self.tags = tags
         self.media = media
         self.users = users
+        self.places = places
 
     # --- helpers ---------------------------------------------------------------------
 
@@ -107,6 +98,10 @@ class StoryService:
             return self.media.claim(author, ids, allow_attached=mine)
         except AssetNotUsableError as exc:
             raise StoryInvalidError(exc.message) from None
+
+    def _check_place(self, place_id: uuid.UUID | None) -> None:
+        if place_id is not None and self.places.get(place_id) is None:
+            raise StoryInvalidError("Unknown place")
 
     def get_visible(self, viewer: User | None, ref: str) -> Story:
         """Published stories are public; drafts are visible only to their author."""
@@ -132,6 +127,7 @@ class StoryService:
 
     def create(self, author: User, data: StoryCreate) -> Story:
         publishing = data.status == StoryStatus.PUBLISHED
+        self._check_place(data.place_id)
         if publishing:
             self._ensure_publishable(data.title, data.content)
         inline_ids = inline_asset_ids(data.content)
@@ -149,6 +145,7 @@ class StoryService:
             content=data.content,
             cover_asset_id=cover[0].id if cover else None,
             location_text=data.location_text,
+            place_id=data.place_id,
             tags=self.tags.get_or_create(data.tags),
             status=STATUS_PUBLISHED if publishing else STATUS_DRAFT,
             published_at=now if publishing else None,
@@ -204,6 +201,10 @@ class StoryService:
             story.content = content
         if "location_text" in fields:
             story.location_text = data.location_text
+        if "place_id" in fields:
+            self._check_place(data.place_id)
+            story.place_id = data.place_id
+            story.place = self.places.get(data.place_id) if data.place_id else None
         if "tags" in fields and data.tags is not None:
             story.tags = self.tags.get_or_create(data.tags)
         story.updated_at = datetime.now(UTC)
@@ -242,7 +243,13 @@ class StoryService:
     # --- reading ---------------------------------------------------------------------
 
     def feed(
-        self, *, limit: int, cursor: str | None, author: str | None = None, tag: str | None = None
+        self,
+        *,
+        limit: int,
+        cursor: str | None,
+        author: str | None = None,
+        tag: str | None = None,
+        place_id: uuid.UUID | None = None,
     ) -> tuple[list[Story], str | None]:
         author_id = None
         if author:
@@ -252,7 +259,7 @@ class StoryService:
             author_id = owner.id
         before = decode_cursor(cursor) if cursor else None
         rows = self.repo.published_page(
-            limit=limit + 1, before=before, author_id=author_id, tag=tag
+            limit=limit + 1, before=before, author_id=author_id, tag=tag, place_id=place_id
         )
         page = rows[:limit]
         nxt = encode_cursor(page[-1].published_at, page[-1].id) if len(rows) > limit else None
@@ -336,6 +343,7 @@ class StoryService:
             cover=_cover(story.cover_asset),
             location_text=story.location_text,
             place_id=story.place_id,
+            place=PlaceBrief.model_validate(story.place) if story.place else None,
             tags=[t.name for t in story.tags],
             status=StoryStatus(story.status),
             published_at=story.published_at,

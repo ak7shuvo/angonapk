@@ -91,8 +91,12 @@ void main() {
     }
     expect(tabsFor(CreatorType.traveler, isMe: false).first, ProfileTab.posts);
     expect(tabsFor(null, isMe: false).first, ProfileTab.posts);
-    // Everyone gets every public section; only you get Saved.
-    expect(tabsFor(CreatorType.guide, isMe: false), hasLength(3));
+    // Everyone gets every public section (incl. Places); only you get Saved.
+    expect(tabsFor(CreatorType.guide, isMe: false), hasLength(4));
+    expect(
+      tabsFor(CreatorType.guide, isMe: false),
+      contains(ProfileTab.places),
+    );
     expect(tabsFor(CreatorType.guide, isMe: true).last, ProfileTab.saved);
   });
 

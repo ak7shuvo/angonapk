@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../models/place.dart';
 import '../../models/story.dart';
 import '../../models/uploaded_media.dart';
 import '../../services/image_picker_service.dart';
@@ -22,6 +23,7 @@ class StoryEditorState {
     this.location = '',
     this.tags = const [],
     this.cover,
+    this.place,
     this.images = const {},
     this.uploads = 0,
     this.saving = false,
@@ -42,6 +44,7 @@ class StoryEditorState {
   final String location;
   final List<String> tags;
   final StoryImage? cover;
+  final PlaceBrief? place;
 
   /// Inline images known to the editor, by asset id (for thumbnails).
   final Map<String, StoryImage> images;
@@ -73,6 +76,7 @@ class StoryEditorState {
     String? location,
     List<String>? tags,
     Object? cover = _keep,
+    Object? place = _keep,
     Map<String, StoryImage>? images,
     int? uploads,
     bool? saving,
@@ -90,6 +94,7 @@ class StoryEditorState {
     location: location ?? this.location,
     tags: tags ?? this.tags,
     cover: identical(cover, _keep) ? this.cover : cover as StoryImage?,
+    place: identical(place, _keep) ? this.place : place as PlaceBrief?,
     images: images ?? this.images,
     uploads: uploads ?? this.uploads,
     saving: saving ?? this.saving,
@@ -127,6 +132,7 @@ class StoryEditorController extends Notifier<StoryEditorState> {
         location: story.locationText ?? '',
         tags: story.tags,
         cover: story.cover,
+        place: story.place,
         images: {for (final m in story.media) m.id: m},
       );
     } catch (e) {
@@ -217,6 +223,9 @@ class StoryEditorController extends Notifier<StoryEditorState> {
     );
   }
 
+  void setPlace(PlaceBrief? place) =>
+      state = state.copyWith(place: place, dirty: true);
+
   void removeCover() => state = state.copyWith(cover: null, dirty: true);
 
   /// Uploads a photo for the body and returns the token to insert (or null).
@@ -262,6 +271,7 @@ class StoryEditorController extends Notifier<StoryEditorState> {
           content: state.content,
           coverAssetId: state.cover?.id,
           locationText: location,
+          placeId: state.place?.id,
           tags: state.tags,
           publish: publish,
         );
@@ -272,6 +282,7 @@ class StoryEditorController extends Notifier<StoryEditorState> {
           content: state.content,
           coverAssetId: state.cover?.id,
           locationText: location,
+          placeId: state.place?.id,
           tags: state.tags,
         );
         if (publish && story.status != StoryStatus.published) {
@@ -284,6 +295,7 @@ class StoryEditorController extends Notifier<StoryEditorState> {
         slug: story.slug,
         status: story.status,
         cover: story.cover,
+        place: story.place,
         images: {for (final m in story.media) m.id: m},
         saving: false,
         dirty: false,

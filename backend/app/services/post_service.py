@@ -2,6 +2,7 @@ import uuid
 
 from app.core.pagination import decode_cursor, encode_cursor
 from app.models import Post, User
+from app.repositories.place_repository import PlaceRepository
 from app.repositories.post_repository import PostRepository
 from app.repositories.social_repository import SocialRepository
 from app.repositories.tag_repository import TagRepository
@@ -16,6 +17,10 @@ class PostNotFoundError(Exception):
     pass
 
 
+class UnknownPlaceError(Exception):
+    pass
+
+
 class NotPostOwnerError(Exception):
     pass
 
@@ -27,11 +32,13 @@ class PostService:
         tags: TagRepository,
         media: MediaService,
         social: SocialRepository,
+        places: PlaceRepository,
     ) -> None:
         self.repo = repo
         self.tags = tags
         self.media = media
         self.social = social
+        self.places = places
 
     def present(self, posts: list[Post], viewer: User | None) -> list[PostRead]:
         """Serialise posts with counts and viewer-specific state (liked/saved)."""
@@ -58,9 +65,23 @@ class PostService:
         return out
 
     def create(self, author: User, data: PostCreate) -> Post:
+        place = None
+        if data.place_id is not None:
+            place = self.places.get(data.place_id)
+            if place is None:
+                raise UnknownPlaceError
         assets = self.media.claim(author, [m.asset_id for m in data.media])
         tags = self.tags.get_or_create(data.tags)
-        return self.repo.add(author.id, data, assets, tags)
+        # A chosen place names the location when the author did not type one.
+        location = data.location_text or (place.name if place else None)
+        return self.repo.add(
+            author.id,
+            data,
+            assets,
+            tags,
+            place_id=place.id if place else None,
+            location_text=location,
+        )
 
     def get(self, post_id: uuid.UUID) -> Post:
         post = self.repo.get(post_id)
@@ -83,10 +104,15 @@ class PostService:
         cursor: str | None,
         following_of: uuid.UUID | None = None,
         author_id: uuid.UUID | None = None,
+        place_id: uuid.UUID | None = None,
     ) -> tuple[list[Post], str | None]:
         before = decode_cursor(cursor) if cursor else None
         rows = self.repo.feed(
-            limit=limit + 1, before=before, following_of=following_of, author_id=author_id
+            limit=limit + 1,
+            before=before,
+            following_of=following_of,
+            author_id=author_id,
+            place_id=place_id,
         )
         page = rows[:limit]
         next_cursor = encode_cursor(page[-1].created_at, page[-1].id) if len(rows) > limit else None

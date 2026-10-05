@@ -219,10 +219,20 @@ class _ReaderState extends ConsumerState<_Reader> {
                                   ),
                                 ),
                               if (overline.isNotEmpty)
-                                Text(
-                                  overline,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: theme.colorScheme.primary,
+                                InkWell(
+                                  onTap: story.place == null
+                                      ? null
+                                      : () => context.push(
+                                          AppRoutes.placePath(
+                                            story.place!.slug,
+                                          ),
+                                        ),
+                                  child: Text(
+                                    overline,
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                        ),
                                   ),
                                 ),
                               const SizedBox(height: AppSpacing.md),

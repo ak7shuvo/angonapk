@@ -5,24 +5,44 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Locally persisted, unsent post text. Photos are intentionally not part of a
 /// draft (they are uploaded immediately and could be orphaned).
 class PostDraft {
-  const PostDraft({this.text = '', this.location = '', this.tags = const []});
+  const PostDraft({
+    this.text = '',
+    this.location = '',
+    this.tags = const [],
+    this.placeId,
+    this.placeSlug,
+    this.placeName,
+  });
+
   final String text;
   final String location;
   final List<String> tags;
+  final String? placeId;
+  final String? placeSlug;
+  final String? placeName;
 
   bool get isEmpty =>
-      text.trim().isEmpty && location.trim().isEmpty && tags.isEmpty;
+      text.trim().isEmpty &&
+      location.trim().isEmpty &&
+      tags.isEmpty &&
+      placeId == null;
 
   Map<String, dynamic> toJson() => {
     'text': text,
     'location': location,
     'tags': tags,
+    'place_id': placeId,
+    'place_slug': placeSlug,
+    'place_name': placeName,
   };
 
   factory PostDraft.fromJson(Map<String, dynamic> json) => PostDraft(
     text: json['text'] as String? ?? '',
     location: json['location'] as String? ?? '',
     tags: [for (final t in (json['tags'] as List? ?? const [])) t as String],
+    placeId: json['place_id'] as String?,
+    placeSlug: json['place_slug'] as String?,
+    placeName: json['place_name'] as String?,
   );
 }
 

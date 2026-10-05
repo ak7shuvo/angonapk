@@ -40,10 +40,12 @@ class PostRepository {
     String? locationText,
     List<String> mediaIds = const [],
     List<String> tags = const [],
+    String? placeId,
   }) async {
     final json = await _api.post(
       '/posts',
       body: {
+        'place_id': ?placeId,
         'body': ?body,
         'location_text': ?locationText,
         'media': [

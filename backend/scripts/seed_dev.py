@@ -22,6 +22,7 @@ from app.core.security import hash_password
 from app.db.session import get_session_factory
 from app.models import Post, PostMedia, Profile, User
 from app.storage.factory import build_storage
+from scripts.seed_places import seed_places
 
 SEED_PASSWORD = "seed-password-123"  # development only
 
@@ -101,6 +102,7 @@ def main() -> None:
         urls.append(obj.url)
 
     with get_session_factory()() as db:
+        places = seed_places(db, urls)
         users: dict[str, User] = {}
         for username, display, creator, location in SEED_USERS:
             user = db.scalar(select(User).where(User.username == username))
@@ -149,7 +151,9 @@ def main() -> None:
                 )
             )
         db.commit()
-    print(f"Seeded {len(SEED_USERS)} users and {len(SEED_POSTS)} posts (SEED DATA).")
+    print(
+        f"Seeded {len(places)} places, {len(SEED_USERS)} users and {len(SEED_POSTS)} posts (SEED DATA)."
+    )
     print(f"Log in as e.g. seed_rahim / {SEED_PASSWORD}")
 
 

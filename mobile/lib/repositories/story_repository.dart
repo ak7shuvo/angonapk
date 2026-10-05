@@ -63,6 +63,7 @@ class StoryRepository {
     required String content,
     String? coverAssetId,
     String? locationText,
+    String? placeId,
     List<String> tags = const [],
     bool publish = false,
   }) async => _story(
@@ -73,6 +74,7 @@ class StoryRepository {
         'content': content,
         'cover_asset_id': coverAssetId,
         'location_text': locationText,
+        'place_id': placeId,
         'tags': tags,
         'status': publish ? 'published' : 'draft',
       },
@@ -86,6 +88,7 @@ class StoryRepository {
     String? content,
     Object? coverAssetId = _unset,
     Object? locationText = _unset,
+    Object? placeId = _unset,
     List<String>? tags,
   }) async => _story(
     await _api.patch(
@@ -95,6 +98,7 @@ class StoryRepository {
         'content': ?content,
         if (!identical(coverAssetId, _unset)) 'cover_asset_id': coverAssetId,
         if (!identical(locationText, _unset)) 'location_text': locationText,
+        if (!identical(placeId, _unset)) 'place_id': placeId,
         'tags': ?tags,
       },
     ),

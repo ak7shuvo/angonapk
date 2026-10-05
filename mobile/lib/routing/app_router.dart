@@ -18,6 +18,7 @@ import '../features/auth/splash_screen.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/composer/composer_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/places/place_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/shell/main_shell.dart';
@@ -72,6 +73,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           username: state.pathParameters['username']!,
           kind: UserListKind.following,
         ),
+      ),
+      GoRoute(
+        path: '/places/:slug',
+        builder: (_, state) => PlaceScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(
         path: AppRoutes.profileEdit,

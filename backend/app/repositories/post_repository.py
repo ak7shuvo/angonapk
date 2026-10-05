@@ -21,11 +21,14 @@ class PostRepository:
         data: PostCreate,
         assets: list[MediaAsset],
         tags: list[Tag],
+        place_id: uuid.UUID | None = None,
+        location_text: str | None = None,
     ) -> Post:
         post = Post(
             author_id=author_id,
             body=data.body,
-            location_text=data.location_text,
+            location_text=location_text if location_text is not None else data.location_text,
+            place_id=place_id,
             tags=tags,
             media=[
                 PostMedia(
@@ -59,11 +62,14 @@ class PostRepository:
         before: tuple[datetime, uuid.UUID] | None,
         following_of: uuid.UUID | None = None,
         author_id: uuid.UUID | None = None,
+        place_id: uuid.UUID | None = None,
     ) -> list[Post]:
         """Newest-first keyset page. Fetches `limit` rows; callers pass limit+1 to detect more."""
         stmt = select(Post).order_by(Post.created_at.desc(), Post.id.desc()).limit(limit)
         if author_id is not None:
             stmt = stmt.where(Post.author_id == author_id)
+        if place_id is not None:
+            stmt = stmt.where(Post.place_id == place_id)
         if following_of is not None:  # "Following" feed: people I follow, plus myself
             followed = select(Follow.followee_id).where(Follow.follower_id == following_of)
             stmt = stmt.where(or_(Post.author_id.in_(followed), Post.author_id == following_of))

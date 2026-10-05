@@ -1,3 +1,5 @@
+import 'place.dart';
+
 enum MediaType { image, video }
 
 class PostMedia {
@@ -82,6 +84,7 @@ class Post {
     this.likedByMe = false,
     this.savedByMe = false,
     this.followingAuthor = false,
+    this.place,
   });
 
   final String id;
@@ -99,6 +102,9 @@ class Post {
   final bool likedByMe;
   final bool savedByMe;
   final bool followingAuthor;
+
+  /// The destination this post is about, if the author tagged one.
+  final PlaceBrief? place;
 
   bool get hasMedia => media.isNotEmpty;
   bool get hasText => body != null && body!.trim().isNotEmpty;
@@ -125,6 +131,9 @@ class Post {
     likedByMe: json['liked_by_me'] as bool? ?? false,
     savedByMe: json['saved_by_me'] as bool? ?? false,
     followingAuthor: json['following_author'] as bool? ?? false,
+    place: json['place'] == null
+        ? null
+        : PlaceBrief.fromJson(json['place'] as Map<String, dynamic>),
   );
 }
 

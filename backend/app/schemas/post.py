@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from app.schemas.author import AuthorRead, author_dict
+from app.schemas.place import PlaceBrief
 from app.schemas.tags import normalize_tags
 
 MAX_BODY = 2000
@@ -39,6 +40,7 @@ class PostCreate(BaseModel):
     location_text: str | None = Field(default=None, max_length=120)
     media: list[MediaCreate] = Field(default_factory=list, max_length=MAX_MEDIA)
     tags: list[str] = Field(default_factory=list, max_length=20)
+    place_id: uuid.UUID | None = None
 
     @field_validator("body", "location_text")
     @classmethod
@@ -77,8 +79,8 @@ class PostRead(BaseModel):
     id: uuid.UUID
     body: str | None
     location_text: str | None
-    # Reserved: linked Place (Phase 09). Always null for now.
     place_id: uuid.UUID | None
+    place: PlaceBrief | None
     media: list[MediaRead]
     tags: list[str]
     author: AuthorRead

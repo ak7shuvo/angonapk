@@ -158,6 +158,10 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  // Places (by slug) and the photos shown on a place page.
+  final places = <Map<String, dynamic>>[];
+  final placePhotos = <String, List<Map<String, dynamic>>>{};
+
   // Stories.
   final stories = <Map<String, dynamic>>[];
   final storyLikes = <String, Set<String>>{};
@@ -316,6 +320,27 @@ class FakeBackend implements ApiClient {
           ], query);
       }
     }
+    if (path == '/places' || path.startsWith('/places/')) {
+      final viewer = requireUser();
+      return _handlePlaces(path, query, viewer);
+    }
+    final userPlaces = RegExp(r'^/users/([^/]+)/places$').firstMatch(path);
+    if (userPlaces != null) {
+      requireUser();
+      final target = userPlaces.group(1)!;
+      if (!users.containsKey(target)) {
+        throw const NotFoundException('User not found');
+      }
+      final slugs = {
+        for (final p in feed)
+          if ((p['author'] as Map)['username'] == target && p['place'] != null)
+            (p['place'] as Map)['slug'],
+      };
+      return [
+        for (final pl in places)
+          if (slugs.contains(pl['slug'])) placeSummary(pl),
+      ];
+    }
     if (path == '/stories' ||
         path.startsWith('/stories/') ||
         path == '/users/me/saved/stories') {
@@ -419,10 +444,19 @@ class FakeBackend implements ApiClient {
               'alt_text': null,
             },
         ];
+        final placeId = data['place_id'] as String?;
+        final place = placeId == null
+            ? null
+            : places.firstWhere(
+                (p) => p['id'] == placeId,
+                orElse: () => throw const ValidationException('Unknown place'),
+              );
         final post = postJson(
           'created-${created.length}',
           body: data['body'] as String?,
-          location: data['location_text'] as String?,
+          location:
+              data['location_text'] as String? ?? place?['name'] as String?,
+          place: place == null ? null : placeBrief(place),
           username: username,
           authorId: me['id'] as String,
           displayName: (me['profile'] as Map)['display_name'] as String?,
@@ -505,11 +539,13 @@ Map<String, dynamic> postJson(
   String? displayName = '[Seed] Rahim',
   List<Map<String, dynamic>> media = const [],
   String createdAt = '2026-01-01T00:00:00+00:00',
+  Map<String, dynamic>? place,
 }) => {
   'id': id,
   'body': body,
   'location_text': location,
-  'place_id': null,
+  'place_id': place?['id'],
+  'place': place,
   'media': media,
   'author': {'id': authorId, 'username': username, 'display_name': displayName},
   'created_at': createdAt,
@@ -564,6 +600,13 @@ extension _StoryRoutes on FakeBackend {
                 'width': 1600,
                 'height': 900,
               };
+      }
+      if (d.containsKey('place_id')) {
+        final id = d['place_id'];
+        story['place_id'] = id;
+        story['place'] = id == null
+            ? null
+            : placeBrief(places.firstWhere((p) => p['id'] == id));
       }
       story['summary'] = (story['content'] as String)
           .split(RegExp(r'\n\s*\n'))
@@ -728,6 +771,7 @@ Map<String, dynamic> storyJson(
   String? location = 'Jaflong, Sylhet',
   Map<String, dynamic>? cover,
   List<Map<String, dynamic>> media = const [],
+  Map<String, dynamic>? place,
 }) => {
   'id': id,
   'slug': 'slug-$id',
@@ -736,7 +780,8 @@ Map<String, dynamic> storyJson(
   'summary': content.split('\n\n').first,
   'cover': cover,
   'location_text': location,
-  'place_id': null,
+  'place_id': place?['id'],
+  'place': place,
   'tags': tags,
   'status': status,
   'published_at': status == 'published' ? '2026-01-01T00:00:00+00:00' : null,
@@ -745,3 +790,122 @@ Map<String, dynamic> storyJson(
   'media': media,
   'author': {'id': authorId, 'username': username, 'display_name': displayName},
 };
+
+/// A place as the API lists it (summary fields).
+Map<String, dynamic> placeJson(
+  String slug, {
+  String? name,
+  String? nameLocal,
+  double lat = 25.0,
+  double lng = 92.0,
+  String? division = 'Sylhet',
+  String? district = 'Sylhet',
+  String? upazila,
+  String description = 'A sample destination.',
+  Map<String, dynamic> metadata = const {'seed': true},
+  int postCount = 0,
+  int storyCount = 0,
+  String? coverUrl,
+}) => {
+  'id': 'place-$slug',
+  'slug': slug,
+  'name': name ?? slug,
+  'name_local': nameLocal,
+  'cover_url': coverUrl,
+  'latitude': lat,
+  'longitude': lng,
+  'division': division,
+  'district': district,
+  'upazila': upazila,
+  'country': 'Bangladesh',
+  'description': description,
+  'metadata': metadata,
+  'post_count': postCount,
+  'story_count': storyCount,
+  'distance_km': null,
+};
+
+Map<String, dynamic> placeBrief(Map<String, dynamic> place) => {
+  'id': place['id'],
+  'slug': place['slug'],
+  'name': place['name'],
+  'name_local': place['name_local'],
+};
+
+Map<String, dynamic> placeSummary(Map<String, dynamic> place) => {...place}
+  ..remove('description')
+  ..remove('metadata');
+
+extension _PlaceRoutes on FakeBackend {
+  dynamic _handlePlaces(
+    String path,
+    Map<String, String>? query,
+    String viewer,
+  ) {
+    Map<String, dynamic> bySlug(String slug) {
+      final found = places.where((p) => p['slug'] == slug);
+      if (found.isEmpty) throw const NotFoundException('Place not found');
+      return found.first;
+    }
+
+    if (path == '/places') {
+      final q = (query?['q'] ?? '').toLowerCase();
+      final division = query?['division']?.toLowerCase();
+      final filtered = [
+        for (final p in places)
+          if ((q.isEmpty ||
+                  '${p['name']} ${p['name_local'] ?? ''} ${p['district']} ${p['division']}'
+                      .toLowerCase()
+                      .contains(q)) &&
+              (division == null ||
+                  (p['division'] as String?)?.toLowerCase() == division))
+            p,
+      ];
+      final hasBounds = query?['min_lat'] != null;
+      final result = [
+        for (final p in filtered)
+          if (!hasBounds ||
+              ((p['latitude'] as double) >= double.parse(query!['min_lat']!) &&
+                  (p['latitude'] as double) <=
+                      double.parse(query['max_lat']!) &&
+                  (p['longitude'] as double) >=
+                      double.parse(query['min_lng']!) &&
+                  (p['longitude'] as double) <=
+                      double.parse(query['max_lng']!)))
+            placeSummary(p),
+      ];
+      return {'items': result, 'total': result.length};
+    }
+    final m = RegExp(r'^/places/([^/]+)(?:/(posts|stories|photos|creators))?$')
+        .firstMatch(path);
+    if (m == null) throw const NotFoundException();
+    final place = bySlug(m.group(1)!);
+    switch (m.group(2)) {
+      case null:
+        return place;
+      case 'posts':
+        return _page([
+          for (final p in feed)
+            if ((p['place'] as Map?)?['slug'] == place['slug'])
+              decorate(p, viewer),
+        ], query);
+      case 'stories':
+        return _page([
+          for (final s in stories)
+            if (s['status'] == 'published' &&
+                (s['place'] as Map?)?['slug'] == place['slug'])
+              _summaryOf(decorateStory(s, viewer)),
+        ], query);
+      case 'photos':
+        return _page(placePhotos[place['slug']] ?? [], query);
+      case 'creators':
+        final names = {
+          for (final p in feed)
+            if ((p['place'] as Map?)?['slug'] == place['slug'])
+              (p['author'] as Map)['username'] as String,
+        };
+        return [for (final n in names) userSummary(n, viewer)];
+    }
+    throw const NotFoundException();
+  }
+}

@@ -6,6 +6,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.schemas.author import AuthorRead
+from app.schemas.place import PlaceBrief
 from app.schemas.tags import normalize_tags
 
 MAX_CONTENT = 50_000
@@ -32,6 +33,7 @@ class StoryCreate(BaseModel):
     cover_asset_id: uuid.UUID | None = None
     location_text: str | None = Field(default=None, max_length=120)
     tags: list[str] = Field(default_factory=list, max_length=20)
+    place_id: uuid.UUID | None = None
     status: StoryStatus = StoryStatus.DRAFT
 
     @field_validator("title")
@@ -60,6 +62,7 @@ class StoryUpdate(BaseModel):
     cover_asset_id: uuid.UUID | None = None
     location_text: str | None = Field(default=None, max_length=120)
     tags: list[str] | None = Field(default=None, max_length=20)
+    place_id: uuid.UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -96,6 +99,7 @@ class StorySummary(BaseModel):
     cover: CoverRead | None
     location_text: str | None
     place_id: uuid.UUID | None
+    place: PlaceBrief | None
     tags: list[str]
     status: StoryStatus
     published_at: datetime | None

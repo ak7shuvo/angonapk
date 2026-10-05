@@ -69,6 +69,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 # --- service factories -------------------------------------------------------------
 # (imported lazily-at-bottom to keep the import graph acyclic)
 from app.repositories.media_repository import MediaRepository  # noqa: E402
+from app.repositories.place_repository import PlaceRepository  # noqa: E402
 from app.repositories.post_repository import PostRepository  # noqa: E402
 from app.repositories.social_repository import SocialRepository  # noqa: E402
 from app.repositories.tag_repository import TagRepository  # noqa: E402
@@ -85,7 +86,9 @@ Media = Annotated[MediaService, Depends(get_media_service)]
 
 
 def get_post_service(db: DbSession, media: Media) -> PostService:
-    return PostService(PostRepository(db), TagRepository(db), media, SocialRepository(db))
+    return PostService(
+        PostRepository(db), TagRepository(db), media, SocialRepository(db), PlaceRepository(db)
+    )
 
 
 Posts = Annotated[PostService, Depends(get_post_service)]
@@ -103,7 +106,9 @@ from app.services.story_service import StoryService  # noqa: E402
 
 
 def get_story_service(db: DbSession, media: Media) -> StoryService:
-    return StoryService(StoryRepository(db), TagRepository(db), media, UserRepository(db))
+    return StoryService(
+        StoryRepository(db), TagRepository(db), media, UserRepository(db), PlaceRepository(db)
+    )
 
 
 Stories = Annotated[StoryService, Depends(get_story_service)]
@@ -123,3 +128,23 @@ def get_profile_service(db: DbSession, media: Media) -> ProfileService:
 
 
 Profiles = Annotated[ProfileService, Depends(get_profile_service)]
+
+
+from app.services.place_service import PlaceService  # noqa: E402
+
+
+def get_place_service(db: DbSession) -> PlaceService:
+    return PlaceService(PlaceRepository(db), SocialRepository(db))
+
+
+Places = Annotated[PlaceService, Depends(get_place_service)]
+
+
+def get_admin_user(user: CurrentUser) -> User:
+    """Authorisation for admin-only endpoints (role set by an operator, never by the API)."""
+    if user.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    return user
+
+
+AdminUser = Annotated[User, Depends(get_admin_user)]

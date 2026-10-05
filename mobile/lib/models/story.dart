@@ -1,3 +1,4 @@
+import 'place.dart';
 import 'post.dart';
 
 enum StoryStatus { draft, published }
@@ -53,6 +54,7 @@ class StorySummary {
     this.likedByMe = false,
     this.savedByMe = false,
     this.followingAuthor = false,
+    this.place,
   });
 
   final String id;
@@ -71,6 +73,7 @@ class StorySummary {
   final bool likedByMe;
   final bool savedByMe;
   final bool followingAuthor;
+  final PlaceBrief? place;
 
   bool get isDraft => status == StoryStatus.draft;
   String get displayTitle => title.trim().isEmpty ? 'Untitled story' : title;
@@ -104,6 +107,9 @@ class StorySummary {
     likedByMe: json['liked_by_me'] as bool? ?? false,
     savedByMe: json['saved_by_me'] as bool? ?? false,
     followingAuthor: json['following_author'] as bool? ?? false,
+    place: json['place'] == null
+        ? null
+        : PlaceBrief.fromJson(json['place'] as Map<String, dynamic>),
   );
 }
 
@@ -128,6 +134,7 @@ class Story extends StorySummary {
     super.likedByMe,
     super.savedByMe,
     super.followingAuthor,
+    super.place,
   });
 
   final String content;
@@ -155,6 +162,7 @@ class Story extends StorySummary {
       likedByMe: s.likedByMe,
       savedByMe: s.savedByMe,
       followingAuthor: s.followingAuthor,
+      place: s.place,
       content: json['content'] as String,
       media: [
         for (final m in json['media'] as List)

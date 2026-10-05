@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../models/place.dart';
 import '../../models/post.dart';
 import '../../models/uploaded_media.dart';
 import '../../services/draft_store.dart';
@@ -64,6 +65,7 @@ class ComposerState {
     this.text = '',
     this.location = '',
     this.tags = const [],
+    this.place,
     this.attachments = const [],
     this.submitting = false,
     this.error,
@@ -74,6 +76,9 @@ class ComposerState {
   final String text;
   final String location;
   final List<String> tags;
+
+  /// A tagged destination (optional).
+  final PlaceBrief? place;
   final List<Attachment> attachments;
   final bool submitting;
 
@@ -105,6 +110,7 @@ class ComposerState {
     String? text,
     String? location,
     List<String>? tags,
+    Object? place = _keep,
     List<Attachment>? attachments,
     bool? submitting,
     Object? error = _keep,
@@ -114,6 +120,7 @@ class ComposerState {
     text: text ?? this.text,
     location: location ?? this.location,
     tags: tags ?? this.tags,
+    place: identical(place, _keep) ? this.place : place as PlaceBrief?,
     attachments: attachments ?? this.attachments,
     submitting: submitting ?? this.submitting,
     error: identical(error, _keep) ? this.error : error as String?,
@@ -146,6 +153,13 @@ class ComposerController extends Notifier<ComposerState> {
       text: state.text.isEmpty ? draft?.text : null,
       location: state.location.isEmpty ? draft?.location : null,
       tags: state.tags.isEmpty ? draft?.tags : null,
+      place: state.place == null && draft?.placeId != null
+          ? PlaceBrief(
+              id: draft!.placeId!,
+              slug: draft.placeSlug ?? '',
+              name: draft.placeName ?? '',
+            )
+          : state.place,
       restored: true,
     );
   }
@@ -160,6 +174,9 @@ class ComposerController extends Notifier<ComposerState> {
             text: state.text,
             location: state.location,
             tags: state.tags,
+            placeId: state.place?.id,
+            placeSlug: state.place?.slug,
+            placeName: state.place?.name,
           ),
         );
   }
@@ -185,6 +202,11 @@ class ComposerController extends Notifier<ComposerState> {
     state = state.copyWith(tags: [...state.tags, tag], error: null);
     _persistDraft();
     return true;
+  }
+
+  void setPlace(PlaceBrief? place) {
+    state = state.copyWith(place: place, error: null);
+    _persistDraft();
   }
 
   void removeTag(String tag) {
@@ -349,6 +371,7 @@ class ComposerController extends Notifier<ComposerState> {
                 : state.location.trim(),
             mediaIds: [for (final a in state.attachments) a.uploaded!.id],
             tags: state.tags,
+            placeId: state.place?.id,
           );
       if (_userId.isNotEmpty) await ref.read(draftStoreProvider).clear(_userId);
       ref.read(feedControllerProvider.notifier).prependPost(post);

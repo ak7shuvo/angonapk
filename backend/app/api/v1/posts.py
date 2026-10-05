@@ -13,6 +13,7 @@ from app.services.post_service import (
     MAX_PAGE_SIZE,
     NotPostOwnerError,
     PostNotFoundError,
+    UnknownPlaceError,
 )
 from app.services.social_service import PostMissingError
 
@@ -29,6 +30,8 @@ def create_post(data: PostCreate, user: CurrentUser, posts: Posts) -> PostRead:
         post = posts.create(user, data)
     except MediaError as exc:
         raise HTTPException(exc.status_code, exc.message) from None
+    except UnknownPlaceError:
+        raise HTTPException(422, "Unknown place") from None
     return posts.present([post], user)[0]
 
 

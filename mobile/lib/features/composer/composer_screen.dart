@@ -10,6 +10,7 @@ import '../../core/theme/app_typography.dart';
 import '../../routing/routes.dart';
 import '../../shared/widgets/widgets.dart';
 import '../auth/auth_controller.dart';
+import '../places/widgets/place_field.dart';
 import 'composer_controller.dart';
 
 /// Suggested categories (also the Explore categories) as one-tap tags.
@@ -169,6 +170,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
             const SizedBox(height: AppSpacing.sm),
             _PhotoStrip(state: state, controller: controller),
             const SizedBox(height: AppSpacing.lg),
+            PlaceField(place: state.place, onChanged: controller.setPlace),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _location,
               onChanged: controller.setLocation,

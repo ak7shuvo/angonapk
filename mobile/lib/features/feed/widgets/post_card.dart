@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -7,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../models/post.dart';
 import '../../../models/social.dart';
+import '../../../routing/routes.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../social/engagement_controller.dart';
 import '../../social/follow_button.dart';
@@ -186,27 +188,36 @@ class _Header extends ConsumerWidget {
               ),
           ],
         ),
-        if (post.locationText != null) ...[
+        if (post.locationText != null || post.place != null) ...[
           const SizedBox(height: AppSpacing.sm + 2),
-          Row(
-            children: [
-              Icon(
-                Icons.place_outlined,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  post.locationText!,
-                  style: theme.textTheme.labelMedium?.copyWith(
+          Semantics(
+            button: post.place != null,
+            child: InkWell(
+              // A tagged place links to its page; free-text locations are plain labels.
+              onTap: post.place == null
+                  ? null
+                  : () => context.push(AppRoutes.placePath(post.place!.slug)),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.place_outlined,
+                    size: 16,
                     color: theme.colorScheme.primary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      post.locationText ?? post.place!.name,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ],

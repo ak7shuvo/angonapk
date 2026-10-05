@@ -41,3 +41,26 @@ def upload_id(client: TestClient, who: dict, **kw) -> str:
     res = upload(client, who, **kw)
     assert res.status_code == 201, res.text
     return res.json()["id"]
+
+
+def make_admin(client: TestClient, db, username: str = "admin_user") -> dict:
+    """Registers a user and promotes them directly in the DB (no API can do that)."""
+    from app.models import User
+
+    who = make_user(client, username)
+    user = db.query(User).filter_by(username=username).one()
+    user.role = "admin"
+    db.commit()
+    return who
+
+
+PLACE = {
+    "name": "Jaflong",
+    "name_local": "জাফলং",
+    "description": "Development description.",
+    "latitude": 25.165,
+    "longitude": 92.017,
+    "division": "Sylhet",
+    "district": "Sylhet",
+    "upazila": "Gowainghat",
+}

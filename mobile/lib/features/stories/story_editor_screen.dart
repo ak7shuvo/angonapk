@@ -8,6 +8,7 @@ import '../../core/theme/app_typography.dart';
 import '../../routing/routes.dart';
 import '../../shared/widgets/widgets.dart';
 import '../composer/composer_screen.dart' show categoryTags, FormErrorBanner;
+import '../places/widgets/place_field.dart';
 import 'story_controllers.dart';
 import 'story_editor_controller.dart';
 import 'story_markup.dart';
@@ -349,6 +350,18 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                     ),
                   ),
                 ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  AppSpacing.lg,
+                  AppSpacing.gutter,
+                  0,
+                ),
+                child: PlaceField(
+                  place: state.place,
+                  onChanged: _controller.setPlace,
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.gutter,

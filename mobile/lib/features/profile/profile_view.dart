@@ -17,12 +17,14 @@ import '../../shared/paged/paged_controller.dart';
 import '../../shared/paged/paged_views.dart';
 import '../../shared/widgets/widgets.dart';
 import '../feed/widgets/post_tile.dart';
+import '../places/place_controllers.dart';
+import '../places/widgets/place_tile.dart';
 import '../social/follow_button.dart';
 import '../social/follow_controller.dart';
 import '../stories/widgets/story_cards.dart';
 import 'profile_controllers.dart';
 
-enum ProfileTab { posts, photos, stories, saved }
+enum ProfileTab { posts, photos, stories, places, saved }
 
 /// Which sections lead for which kind of creator (everyone gets all of them).
 List<ProfileTab> tabsFor(CreatorType? type, {required bool isMe}) {
@@ -42,13 +44,14 @@ List<ProfileTab> tabsFor(CreatorType? type, {required bool isMe}) {
     ],
     _ => [ProfileTab.posts, ProfileTab.stories, ProfileTab.photos],
   };
-  return [...order, if (isMe) ProfileTab.saved];
+  return [...order, ProfileTab.places, if (isMe) ProfileTab.saved];
 }
 
 String _tabLabel(ProfileTab t) => switch (t) {
   ProfileTab.posts => 'Posts',
   ProfileTab.photos => 'Photos',
   ProfileTab.stories => 'Stories',
+  ProfileTab.places => 'Places',
   ProfileTab.saved => 'Saved',
 };
 
@@ -162,6 +165,51 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             await c.refresh();
           },
           loadMore: c.loadMore,
+        );
+      case ProfileTab.places:
+        final places = ref.watch(userPlacesProvider(user));
+        slivers = [
+          places.when(
+            loading: () => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: LoadingView(),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: ErrorState(
+                error: e,
+                onRetry: () => ref.invalidate(userPlacesProvider(user)),
+              ),
+            ),
+            data: (items) => items.isEmpty
+                ? SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: Icons.place_outlined,
+                      title: profile.isMe
+                          ? 'No places yet'
+                          : 'No places documented yet',
+                      message: profile.isMe
+                          ? 'Tag a place when you post or write a story and it will appear here.'
+                          : null,
+                    ),
+                  )
+                : SliverList.builder(
+                    itemCount: items.length,
+                    itemBuilder: (context, i) => PlaceTile(place: items[i]),
+                  ),
+          ),
+        ];
+        return _scaffold(
+          profile,
+          tabs,
+          tab,
+          slivers,
+          refresh: () async {
+            await refreshAll();
+            ref.invalidate(userPlacesProvider(user));
+          },
+          loadMore: () {},
         );
       case ProfileTab.saved:
         if (_savedStories) {
