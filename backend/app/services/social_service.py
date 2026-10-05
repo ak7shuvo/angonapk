@@ -6,6 +6,7 @@ from app.repositories.post_repository import PostRepository
 from app.repositories.social_repository import SocialRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.social import CommentRead, UserSummary
+from app.services.notification_service import NotificationService
 
 
 class PostMissingError(Exception):
@@ -33,11 +34,16 @@ class SocialService:
     can be (liking twice is not an error and never double-counts)."""
 
     def __init__(
-        self, social: SocialRepository, posts: PostRepository, users: UserRepository
+        self,
+        social: SocialRepository,
+        posts: PostRepository,
+        users: UserRepository,
+        notifications: NotificationService,
     ) -> None:
         self.social = social
         self.posts = posts
         self.users = users
+        self.notifications = notifications
 
     def _post(self, post_id: uuid.UUID) -> Post:
         post = self.posts.get(post_id)
@@ -51,11 +57,14 @@ class SocialService:
         """Returns (liked, like_count, post, newly_created)."""
         post = self._post(post_id)
         created = self.social.like(user.id, post.id)
+        if created:
+            self.notifications.post_liked(user, post)
         return True, self.social.like_count(post.id), post, created
 
     def unlike(self, user: User, post_id: uuid.UUID) -> tuple[bool, int, Post]:
         post = self._post(post_id)
         self.social.unlike(user.id, post.id)
+        self.notifications.like_removed(user, "post", post.id)
         return False, self.social.like_count(post.id), post
 
     def save(self, user: User, post_id: uuid.UUID) -> None:
@@ -68,7 +77,9 @@ class SocialService:
 
     def add_comment(self, user: User, post_id: uuid.UUID, body: str) -> tuple[Comment, Post]:
         post = self._post(post_id)
-        return self.social.add_comment(post.id, user.id, body), post
+        comment = self.social.add_comment(post.id, user.id, body)
+        self.notifications.commented(user, post, comment)
+        return comment, post
 
     def delete_comment(self, user: User, comment_id: uuid.UUID) -> Comment:
         comment = self.social.get_comment(comment_id)
@@ -77,6 +88,7 @@ class SocialService:
         if comment.author_id != user.id:
             raise NotCommentOwnerError
         self.social.delete_comment(comment)
+        self.notifications.comment_removed(comment.id)
         return comment
 
     def comments(
@@ -107,6 +119,8 @@ class SocialService:
         if target.id == me.id:
             raise SelfFollowError
         created = self.social.follow(me.id, target.id)
+        if created:
+            self.notifications.followed(me, target.id)
         return target, self.social.followers_count(target.id), created
 
     def unfollow(self, me: User, username: str) -> tuple[User, int]:
@@ -114,6 +128,7 @@ class SocialService:
         if target.id == me.id:
             raise SelfFollowError
         self.social.unfollow(me.id, target.id)
+        self.notifications.follow_removed(me, target.id)
         return target, self.social.followers_count(target.id)
 
     def _summaries(self, viewer: User, rows: list[tuple[User, object]]) -> list[UserSummary]:

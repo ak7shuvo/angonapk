@@ -8,6 +8,7 @@ from app.repositories.social_repository import SocialRepository
 from app.repositories.tag_repository import TagRepository
 from app.schemas.post import PostCreate, PostRead
 from app.services.media_service import MediaService
+from app.services.notification_service import NotificationService
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -33,12 +34,14 @@ class PostService:
         media: MediaService,
         social: SocialRepository,
         places: PlaceRepository,
+        notifications: NotificationService,
     ) -> None:
         self.repo = repo
         self.tags = tags
         self.media = media
         self.social = social
         self.places = places
+        self.notifications = notifications
 
     def present(self, posts: list[Post], viewer: User | None) -> list[PostRead]:
         """Serialise posts with counts and viewer-specific state (liked/saved)."""
@@ -94,7 +97,9 @@ class PostService:
         if post.author_id != user.id:
             raise NotPostOwnerError
         assets = [m.asset for m in post.media if m.asset is not None]
+        comment_ids = self.social.comment_ids(post.id)
         self.repo.delete(post)
+        self.notifications.target_deleted("post", post.id, comment_ids)
         self.media.release(assets)  # remove stored files nothing references any more
 
     def feed(

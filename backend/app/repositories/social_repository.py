@@ -124,6 +124,9 @@ class SocialRepository:
         self.db.refresh(comment)
         return comment
 
+    def comment_ids(self, post_id: uuid.UUID) -> list[uuid.UUID]:
+        return list(self.db.scalars(select(Comment.id).where(Comment.post_id == post_id)))
+
     def get_comment(self, comment_id: uuid.UUID) -> Comment | None:
         return self.db.get(Comment, comment_id)
 

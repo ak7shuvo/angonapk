@@ -1,6 +1,7 @@
 """Import every model here so Base.metadata (and Alembic) sees all tables."""
 
 from app.models.media import MediaAsset
+from app.models.notification import Notification
 from app.models.place import Place
 from app.models.post import Post, PostMedia
 from app.models.profile import Profile
@@ -25,6 +26,7 @@ __all__ = [
     "Comment",
     "Follow",
     "MediaAsset",
+    "Notification",
     "Place",
     "Post",
     "PostLike",

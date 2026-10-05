@@ -8,6 +8,7 @@ import '../../shared/widgets/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../feed/feed_controller.dart';
 import '../feed/widgets/post_tile.dart';
+import '../notifications/notification_controllers.dart';
 
 /// ANGON Home: header with profile entry point, a Discover / Following switch
 /// and the live feed.
@@ -68,6 +69,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     icon: const Icon(Icons.search),
                     onPressed: () => context.push(AppRoutes.search),
                   ),
+                  if (me != null) const _NotificationsBell(),
                   if (me != null)
                     Padding(
                       padding: const EdgeInsets.only(
@@ -230,6 +232,28 @@ class _Footer extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
       child: Center(child: child),
+    );
+  }
+}
+
+/// Bell with an unread badge; opens the inbox and refreshes the count on return.
+class _NotificationsBell extends ConsumerWidget {
+  const _NotificationsBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadCountProvider);
+    return IconButton(
+      tooltip: unread > 0 ? 'Notifications, $unread unread' : 'Notifications',
+      icon: Badge(
+        isLabelVisible: unread > 0,
+        label: Text(unread > 99 ? '99+' : '$unread'),
+        child: const Icon(Icons.notifications_none),
+      ),
+      onPressed: () async {
+        await context.push(AppRoutes.notifications);
+        ref.read(unreadCountProvider.notifier).refresh();
+      },
     );
   }
 }

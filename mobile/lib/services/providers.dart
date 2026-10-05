@@ -9,6 +9,7 @@ import '../repositories/auth_repository.dart';
 import '../repositories/explore_repository.dart';
 import '../repositories/health_repository.dart';
 import '../repositories/media_repository.dart';
+import '../repositories/notification_repository.dart';
 import '../repositories/place_repository.dart';
 import '../repositories/post_repository.dart';
 import '../repositories/story_repository.dart';
@@ -105,3 +106,7 @@ final mapAdapterProvider = Provider<MapProviderAdapter?>((ref) {
     MapProviderKind.none => null,
   };
 });
+
+final notificationRepositoryProvider = Provider<NotificationRepository>(
+  (ref) => NotificationRepository(ref.watch(apiClientProvider)),
+);

@@ -1,6 +1,18 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, comments, explore, health, map, media, places, posts, stories, users
+from app.api.v1 import (
+    auth,
+    comments,
+    explore,
+    health,
+    map,
+    media,
+    notifications,
+    places,
+    posts,
+    stories,
+    users,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router)
@@ -13,5 +25,6 @@ api_router.include_router(stories.router)
 api_router.include_router(places.router)
 api_router.include_router(explore.router)
 api_router.include_router(map.router)
+api_router.include_router(notifications.router)
 
-# Planned routers (added per phase): notifications, reports.
+# Planned routers (added per phase): reports.

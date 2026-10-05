@@ -149,6 +149,13 @@ abstract class PagedController<T> extends Notifier<PagedState<T>> {
     state = state.copyWith(items: [...state.items.where((i) => !test(i))]);
   }
 
+  /// Swap an item for an updated copy (same id), keeping its position.
+  void replaceItem(T item) {
+    state = state.copyWith(
+      items: [for (final i in state.items) idOf(i) == idOf(item) ? item : i],
+    );
+  }
+
   /// A server-confirmed new item appears at the top.
   void prepend(T item) {
     if (state.status != PagedStatus.ready) return;

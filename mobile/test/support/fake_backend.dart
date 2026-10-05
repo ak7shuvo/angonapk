@@ -158,6 +158,9 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  /// Notifications served by `/notifications`, newest first.
+  final notifications = <Map<String, dynamic>>[];
+
   /// Query strings of every GET /search the app made (to assert debouncing).
   final searchCalls = <Map<String, String>>[];
 
@@ -321,6 +324,33 @@ class FakeBackend implements ApiClient {
             for (final f in follows[target] ?? <String>{})
               userSummary(f, viewer),
           ], query);
+      }
+    }
+    if (path.startsWith('/notifications')) {
+      requireUser();
+      if (method == 'GET' && path == '/notifications/unread-count') {
+        return {
+          'unread': notifications.where((n) => n['is_read'] != true).length,
+        };
+      }
+      if (method == 'POST' && path == '/notifications/read-all') {
+        for (final n in notifications) {
+          n['is_read'] = true;
+        }
+        return null;
+      }
+      final read = RegExp(r'^/notifications/([^/]+)/read$').firstMatch(path);
+      if (method == 'POST' && read != null) {
+        final n = notifications.firstWhere((n) => n['id'] == read.group(1));
+        n['is_read'] = true;
+        return n;
+      }
+      if (method == 'GET' && path == '/notifications') {
+        final unreadOnly = query?['unread_only'] == 'true';
+        return _page([
+          for (final n in notifications)
+            if (!unreadOnly || n['is_read'] != true) n,
+        ], query);
       }
     }
     if (path == '/map/nearby') {
@@ -1026,3 +1056,30 @@ extension _DiscoveryRoutes on FakeBackend {
     };
   }
 }
+
+/// A notification as the API returns it.
+Map<String, dynamic> notificationJson(
+  String id, {
+  String type = 'like',
+  String? actor = 'maya',
+  String? targetType = 'post',
+  String? targetId = 'p1',
+  Map<String, dynamic> data = const {},
+  bool isRead = false,
+}) => {
+  'id': id,
+  'type': type,
+  'actor': actor == null
+      ? null
+      : {
+          'id': 'u-$actor',
+          'username': actor,
+          'display_name': 'Name $actor',
+          'avatar_url': null,
+        },
+  'target_type': targetType,
+  'target_id': targetId,
+  'data': data,
+  'is_read': isRead,
+  'created_at': '2026-01-02T00:00:00Z',
+};

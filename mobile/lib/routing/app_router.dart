@@ -20,6 +20,7 @@ import '../features/composer/composer_screen.dart';
 import '../features/explore/category_screen.dart';
 import '../features/explore/explore_screen.dart';
 import '../features/explore/search_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/map/map_screen.dart';
 import '../features/places/place_screen.dart';
@@ -83,6 +84,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             MapScreen(placeSlug: state.uri.queryParameters['place']),
       ),
       GoRoute(path: AppRoutes.search, builder: (_, _) => const SearchScreen()),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (_, _) => const NotificationsScreen(),
+      ),
       GoRoute(
         path: '/explore/category/:slug',
         builder: (_, state) =>

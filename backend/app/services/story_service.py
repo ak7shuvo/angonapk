@@ -22,6 +22,7 @@ from app.schemas.story import (
     StoryUpdate,
 )
 from app.services.media_service import AssetNotUsableError, MediaService
+from app.services.notification_service import NotificationService
 
 
 class StoryError(Exception):
@@ -80,12 +81,14 @@ class StoryService:
         media: MediaService,
         users: UserRepository,
         places: PlaceRepository,
+        notifications: NotificationService,
     ) -> None:
         self.repo = repo
         self.tags = tags
         self.media = media
         self.users = users
         self.places = places
+        self.notifications = notifications
 
     # --- helpers ---------------------------------------------------------------------
 
@@ -238,6 +241,7 @@ class StoryService:
         if story.cover_asset is not None:
             assets.append(story.cover_asset)
         self.repo.delete(story)
+        self.notifications.target_deleted("story", story.id)
         self.media.release(assets)
 
     # --- reading ---------------------------------------------------------------------
@@ -303,11 +307,14 @@ class StoryService:
     def like(self, user: User, story_id: uuid.UUID) -> tuple[Story, int, bool]:
         story = self._published(story_id)
         created = self.repo.like(user.id, story.id)
+        if created:
+            self.notifications.story_liked(user, story)
         return story, self.repo.like_count(story.id), created
 
     def unlike(self, user: User, story_id: uuid.UUID) -> tuple[Story, int]:
         story = self._published(story_id)
         self.repo.unlike(user.id, story.id)
+        self.notifications.like_removed(user, "story", story.id)
         return story, self.repo.like_count(story.id)
 
     def save(self, user: User, story_id: uuid.UUID) -> None:
