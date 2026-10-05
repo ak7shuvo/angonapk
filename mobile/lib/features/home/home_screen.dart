@@ -63,6 +63,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 titleSpacing: AppSpacing.gutter,
                 title: const AngonWordmark(size: 22),
                 actions: [
+                  IconButton(
+                    tooltip: 'Search',
+                    icon: const Icon(Icons.search),
+                    onPressed: () => context.push(AppRoutes.search),
+                  ),
                   if (me != null)
                     Padding(
                       padding: const EdgeInsets.only(

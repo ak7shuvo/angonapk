@@ -42,6 +42,7 @@ def feed(
     limit: Limit = DEFAULT_PAGE_SIZE,
     cursor: Cursor = None,
     scope: Literal["all", "following"] = "all",
+    tag: Annotated[str | None, Query(max_length=40)] = None,
 ) -> FeedPage:
     """Newest-first feed with cursor pagination.
 
@@ -50,7 +51,10 @@ def feed(
     """
     try:
         items, next_cursor = posts.feed(
-            limit=limit, cursor=cursor, following_of=user.id if scope == "following" else None
+            limit=limit,
+            cursor=cursor,
+            following_of=user.id if scope == "following" else None,
+            tag=tag.strip().lower().lstrip("#") if tag else None,
         )
     except InvalidCursorError:
         raise HTTPException(422, "Invalid cursor") from None

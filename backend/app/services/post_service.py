@@ -105,6 +105,7 @@ class PostService:
         following_of: uuid.UUID | None = None,
         author_id: uuid.UUID | None = None,
         place_id: uuid.UUID | None = None,
+        tag: str | None = None,
     ) -> tuple[list[Post], str | None]:
         before = decode_cursor(cursor) if cursor else None
         rows = self.repo.feed(
@@ -113,6 +114,7 @@ class PostService:
             following_of=following_of,
             author_id=author_id,
             place_id=place_id,
+            tag=tag,
         )
         page = rows[:limit]
         next_cursor = encode_cursor(page[-1].created_at, page[-1].id) if len(rows) > limit else None

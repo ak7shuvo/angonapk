@@ -4,6 +4,7 @@ import '../config/app_config.dart';
 import '../core/network/api_client.dart';
 import '../features/auth/auth_controller.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/explore_repository.dart';
 import '../repositories/health_repository.dart';
 import '../repositories/media_repository.dart';
 import '../repositories/place_repository.dart';
@@ -78,6 +79,13 @@ final storyRepositoryProvider = Provider<StoryRepository>(
 
 final placeRepositoryProvider = Provider<PlaceRepository>(
   (ref) => PlaceRepository(
+    ref.watch(apiClientProvider),
+    mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
+  ),
+);
+
+final exploreRepositoryProvider = Provider<ExploreRepository>(
+  (ref) => ExploreRepository(
     ref.watch(apiClientProvider),
     mediaBaseUrl: ref.watch(appConfigProvider).apiBaseUrl,
   ),

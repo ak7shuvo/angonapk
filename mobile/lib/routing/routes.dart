@@ -18,6 +18,8 @@ abstract final class AppRoutes {
   static String userPath(String username) => '/u/$username';
   static String placePath(String slug) => '/places/$slug';
   static const map = '/map';
+  static const search = '/search';
+  static String categoryPath(String slug) => '/explore/category/$slug';
   static String postPath(String id) => '/posts/$id';
   static String followersPath(String username) => '/u/$username/followers';
   static String followingPath(String username) => '/u/$username/following';

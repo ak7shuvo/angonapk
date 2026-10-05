@@ -17,12 +17,14 @@ import '../features/auth/register_screen.dart';
 import '../features/auth/splash_screen.dart';
 import '../features/auth/welcome_screen.dart';
 import '../features/composer/composer_screen.dart';
+import '../features/explore/category_screen.dart';
+import '../features/explore/explore_screen.dart';
+import '../features/explore/search_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/places/place_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/shell/main_shell.dart';
-import '../features/shell/placeholder_screen.dart';
 import 'routes.dart';
 
 export 'routes.dart';
@@ -74,6 +76,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           kind: UserListKind.following,
         ),
       ),
+      GoRoute(path: AppRoutes.search, builder: (_, _) => const SearchScreen()),
+      GoRoute(
+        path: '/explore/category/:slug',
+        builder: (_, state) =>
+            CategoryScreen(slug: state.pathParameters['slug']!),
+      ),
       GoRoute(
         path: '/places/:slug',
         builder: (_, state) => PlaceScreen(slug: state.pathParameters['slug']!),
@@ -116,11 +124,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.explore,
-                builder: (_, _) => const PlaceholderScreen(
-                  title: 'Explore',
-                  icon: Icons.travel_explore_outlined,
-                  message: 'Discover destinations, culture and heritage. Coming in Phase 08.',
-                ),
+                builder: (_, _) => const ExploreScreen(),
               ),
             ],
           ),

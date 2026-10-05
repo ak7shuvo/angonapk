@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Follow, MediaAsset, Post, PostMedia, Tag
+from app.models import Follow, MediaAsset, Post, PostMedia, Tag, post_tags
 from app.schemas.post import PostCreate
 
 
@@ -63,6 +63,7 @@ class PostRepository:
         following_of: uuid.UUID | None = None,
         author_id: uuid.UUID | None = None,
         place_id: uuid.UUID | None = None,
+        tag: str | None = None,
     ) -> list[Post]:
         """Newest-first keyset page. Fetches `limit` rows; callers pass limit+1 to detect more."""
         stmt = select(Post).order_by(Post.created_at.desc(), Post.id.desc()).limit(limit)
@@ -70,6 +71,14 @@ class PostRepository:
             stmt = stmt.where(Post.author_id == author_id)
         if place_id is not None:
             stmt = stmt.where(Post.place_id == place_id)
+        if tag is not None:
+            stmt = stmt.where(
+                Post.id.in_(
+                    select(post_tags.c.post_id)
+                    .join(Tag, Tag.id == post_tags.c.tag_id)
+                    .where(Tag.name == tag)
+                )
+            )
         if following_of is not None:  # "Following" feed: people I follow, plus myself
             followed = select(Follow.followee_id).where(Follow.follower_id == following_of)
             stmt = stmt.where(or_(Post.author_id.in_(followed), Post.author_id == following_of))

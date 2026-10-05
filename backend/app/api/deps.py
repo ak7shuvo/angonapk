@@ -148,3 +148,18 @@ def get_admin_user(user: CurrentUser) -> User:
 
 
 AdminUser = Annotated[User, Depends(get_admin_user)]
+
+
+from app.repositories.explore_repository import ExploreRepository  # noqa: E402
+from app.services.explore_service import ExploreService  # noqa: E402
+
+
+def get_explore_service(
+    db: DbSession, posts: Posts, stories: Stories, places: Places
+) -> ExploreService:
+    return ExploreService(
+        ExploreRepository(db), posts, stories, places, PlaceRepository(db), SocialRepository(db)
+    )
+
+
+Explorer = Annotated[ExploreService, Depends(get_explore_service)]

@@ -158,6 +158,9 @@ class FakeBackend implements ApiClient {
     };
   }
 
+  /// Query strings of every GET /search the app made (to assert debouncing).
+  final searchCalls = <Map<String, String>>[];
+
   // Places (by slug) and the photos shown on a place page.
   final places = <Map<String, dynamic>>[];
   final placePhotos = <String, List<Map<String, dynamic>>>{};
@@ -319,6 +322,15 @@ class FakeBackend implements ApiClient {
               userSummary(f, viewer),
           ], query);
       }
+    }
+    if (path == '/explore') {
+      final viewer = requireUser();
+      return _explore(viewer);
+    }
+    if (path == '/search') {
+      final viewer = requireUser();
+      searchCalls.add({...?query});
+      return _search(viewer, query!);
     }
     if (path == '/places' || path.startsWith('/places/')) {
       final viewer = requireUser();
@@ -907,5 +919,95 @@ extension _PlaceRoutes on FakeBackend {
         return [for (final n in names) userSummary(n, viewer)];
     }
     throw const NotFoundException();
+  }
+}
+
+extension _DiscoveryRoutes on FakeBackend {
+  Map<String, dynamic> _explore(String viewer) {
+    const categories = [
+      ['travel', 'Travel'],
+      ['culture', 'Culture'],
+      ['heritage', 'Heritage'],
+      ['nature', 'Nature'],
+      ['food', 'Food'],
+      ['photography', 'Photography'],
+      ['people', 'People'],
+    ];
+    return {
+      'categories': [
+        for (final c in categories)
+          {
+            'slug': c[0],
+            'label': c[1],
+            'post_count': feed
+                .where((p) => (p['tags'] as List? ?? []).contains(c[0]))
+                .length,
+            'story_count': stories
+                .where(
+                  (s) =>
+                      s['status'] == 'published' &&
+                      (s['tags'] as List).contains(c[0]),
+                )
+                .length,
+          },
+      ],
+      'trending_posts': [for (final p in feed.take(10)) decorate(p, viewer)],
+      'featured_stories': [
+        for (final s
+            in stories.where((s) => s['status'] == 'published').take(6))
+          _summaryOf(decorateStory(s, viewer)),
+      ],
+      'popular_places': [for (final p in places.take(8)) placeSummary(p)],
+      'creators': [
+        for (final u in users.keys)
+          if (u != viewer &&
+              (users[u]!['profile'] as Map)['is_complete'] == true)
+            userSummary(u, viewer),
+      ],
+    };
+  }
+
+  Map<String, dynamic> _search(String viewer, Map<String, String> query) {
+    final q = query['q']!.trim().toLowerCase();
+    final type = query['type'] ?? 'all';
+    final limit = int.parse(query['limit'] ?? '5');
+    final offset = type == 'all' ? 0 : int.parse(query['offset'] ?? '0');
+    List<T> window<T>(Iterable<T> all) => all.skip(offset).take(limit).toList();
+    bool has(Object? v) => '$v'.toLowerCase().contains(q);
+    return {
+      'query': q,
+      'users': type == 'all' || type == 'users'
+          ? window([
+              for (final u in users.keys)
+                if (has(u) ||
+                    has((users[u]!['profile'] as Map)['display_name']))
+                  userSummary(u, viewer),
+            ])
+          : [],
+      'stories': type == 'all' || type == 'stories'
+          ? window([
+              for (final s in stories)
+                if (s['status'] == 'published' &&
+                    (has(s['title']) || has(s['content'])))
+                  _summaryOf(decorateStory(s, viewer)),
+            ])
+          : [],
+      'posts': type == 'all' || type == 'posts'
+          ? window([
+              for (final p in feed)
+                if (has(p['body']) || has(p['location_text']))
+                  decorate(p, viewer),
+            ])
+          : [],
+      'places': type == 'all' || type == 'places'
+          ? window([
+              for (final p in places)
+                if (has(p['name']) ||
+                    has(p['name_local']) ||
+                    has(p['district']))
+                  placeSummary(p),
+            ])
+          : [],
+    };
   }
 }

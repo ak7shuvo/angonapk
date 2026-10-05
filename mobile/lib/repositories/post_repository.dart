@@ -15,10 +15,16 @@ class PostRepository {
     String? cursor,
     int limit = 20,
     String scope = 'all',
+    String? tag,
   }) async {
     final json = await _api.get(
       '/posts',
-      query: {'limit': '$limit', 'scope': scope, 'cursor': ?cursor},
+      query: {
+        'limit': '$limit',
+        'scope': scope,
+        'cursor': ?cursor,
+        'tag': ?tag,
+      },
     );
     return FeedPage.fromJson(
       json as Map<String, dynamic>,
