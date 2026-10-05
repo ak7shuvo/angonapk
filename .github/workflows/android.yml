@@ -73,7 +73,7 @@ jobs:
       - name: Build App Bundle
         run: flutter build appbundle --release --dart-define=APP_ENV=production --dart-define=API_BASE_URL=$API_BASE_URL
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: angon-android-release
           path: |
